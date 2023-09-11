@@ -91,17 +91,15 @@
 
 
 /* Macros Genericos */
-#define ENABLE				1
-#define DISABLE				0
+#define ENABLE				(1)
+#define DISABLE				(0)
 #define SET					ENABLE
 #define CLEAR				DISABLE
 #define RESET				DISABLE
-#define GPIO_PIN_SET		SET
-#define GPIO_PIN_RESET		RESET
 #define FLAG_SET			SET
 #define FLAG_RESET			RESET
-#define I2C_WRITE			0
-#define I2C_READ			1
+#define I2C_WRITE			(0)
+#define I2C_READ			(1)
 
 /* ========== INICIO de la descripcion de los elementos que componen el periferico ==========
  *
@@ -151,10 +149,10 @@ typedef struct
 	volatile uint32_t CSR;			//Clock Control & Status Register		ADDR_OFFSET:	0x74
 	volatile uint32_t reserved12;	//reserved								ADDR_OFFSET:	0x78
 	volatile uint32_t reserved13;	//reserved								ADDR_OFFSET:	0x7C
-	volatile uint32_t SSCGR;		// Spread Spectrum Clock Generation Reg	ADDR_OFFSET:	0x80
-	volatile uint32_t PLLI2SCFGR;	// PLLI2S Configuration Register		ADDR_OFFSET:	0x84
+	volatile uint32_t SSCGR;		//Spread Spectrum Clock Generation Reg	ADDR_OFFSET:	0x80
+	volatile uint32_t PLLI2SCFGR;	//PLLI2S Configuration Register			ADDR_OFFSET:	0x84
 	volatile uint32_t reserved14;	//reserved								ADDR_OFFSET:	0x88
-	volatile uint32_t DCKCFGR;		// Dedicated Clocks Configuration Reg	ADDR_OFFSET:	0x8C
+	volatile uint32_t DCKCFGR;		//Dedicated Clocks Configuration Reg	ADDR_OFFSET:	0x8C
 
 } RCC_RegDef_t;
 
@@ -187,9 +185,9 @@ typedef struct
 #define RCC_AHB1ENR_GPIODEN			3
 #define RCC_AHB1ENR_GPIOEEN			4
 #define RCC_AHB1ENR_GPIOHEN			7
-#define RCC_AHB1ENR_GRCEN				12
-#define RCC_AHB1ENR_DMA1EN				21
-#define RCC_AHB1ENR_DMA2EN				22
+#define RCC_AHB1ENR_GRCEN			12
+#define RCC_AHB1ENR_DMA1EN			21
+#define RCC_AHB1ENR_DMA2EN			22
 
 /*
  * 6.3.10 RCC_AHB2ENR
@@ -231,8 +229,8 @@ typedef struct
 	volatile uint32_t BSRR;			//port bit set/reset register			ADDR_OFFSET:	0X18
 	volatile uint32_t LCKR;			//port configuration lock register		ADDR_OFFSET:	0X1C
 	volatile uint32_t AFR[2];		//port alternate function registers		ADDR_OFFSET:	0x20-0x24
-
 } GPIO_TypeDef;
+
 
 /* Creamos un objeto de la estructura definida y hacemos que quede ubicada exactamente sobre
  * la posicion de memoria donde se encuentra el registro.
@@ -240,6 +238,7 @@ typedef struct
  *
  * Tener cuidado que cada elemento coincida con su respectiva direccion base
  */
+
 #define GPIOA			((GPIO_TypeDef *) GPIOA_BASE_ADDR)
 #define GPIOB			((GPIO_TypeDef *) GPIOB_BASE_ADDR)
 #define GPIOC			((GPIO_TypeDef *) GPIOC_BASE_ADDR)
@@ -248,73 +247,13 @@ typedef struct
 #define GPIOH			((GPIO_TypeDef *) GPIOH_BASE_ADDR)
 
 
-/* Descripcion de cada uno de los registros del periferico */
-
-/* Valores estandar para las configuraciones */
-/* 8.4.1 GPIOx_MODER (dos bits por cada PIN) */
-#define GPIO_MODE_IN			0
-#define GPIO_MODE_OUT			1
-#define GPIO_MODE_ATLFN			2
-#define GPIO_MODE_ANALOG		3
-
-/* 8.4.2 GPIOx_OTYPER (un bit por cada PIN) */
-#define GPIO_OTYPE_PUSHPULL			0
-#define GPIO_OTYPE_OPENDRAIN		1
-
-/* 8.4.3 GPIOx_OSPEEDR (dos bits por cada PIN) */
-#define GPIO_OSPEED_LOW			0
-#define GPIO_OSPEED_MEDIU		1
-#define GPIO_OSPEED_FAST		2
-#define GPIO_OSPEED_HIGH		3
-
-/* 8.4.4 GPIOx_PUPDR (dos bits por cada PIN) */
-#define GPIO_PUPDR_NOTHING			0
-#define GPIO_PUPDR_PULLUP			1
-#define GPIO_PUPDR_PULLDOWN			2
-#define GPIO_PUPDR_RESERVED			3
-
-/* 8.4.5 GPIOx_IDR (un bit por cada PIN) - este es el registro para leer el estado de un PIN */
-
-/* 8.4.6 GPIOx_ODR (un bit por cada PIN) - este es el registro para escribir el estado de un
- * PIN (1 o 0). Este registro puede ser escrito y leido desde el software, pero no garantiza
- * una escritura "atomica", por lo cual es preferible usar el registro BSRR
- */
-
-/* Definicion de los nombres de los pines */
-#define PIN_0			0
-#define PIN_1			1
-#define PIN_2			2
-#define PIN_3			3
-#define PIN_4			4
-#define PIN_5			5
-#define PIN_6			6
-#define PIN_7			7
-#define PIN_8			8
-#define PIN_9			9
-#define PIN_10			10
-#define PIN_11			11
-#define PIN_12			12
-#define PIN_13			13
-#define PIN_14			14
-#define PIN_15			15
-
-/* Definicion de las funciones alternativas */
-#define AF0			0b0000
-#define AF1			0b0001
-#define AF2			0b0010
-#define AF3			0b0011
-#define AF4			0b0100
-#define AF5			0b0101
-#define AF6			0b0110
-#define AF7			0b0111
-#define AF8			0b1000
-#define AF9			0b1001
-#define AF10		0b1010
-#define AF11		0b1011
-#define AF12		0b1100
-#define AF13		0b1101
-#define AF14		0b1110
-#define AF15		0b1111
+/* For testing assert parameters */
+#define IS_GPIO_ALL_INSTANCE(GPIOx)	((GPIOx == GPIOA)	|| \
+									 (GPIOx == GPIOB)	|| \
+									 (GPIOx == GPIOC)	|| \
+									 (GPIOx == GPIOD)	|| \
+									 (GPIOx == GPIOE)	|| \
+									 (GPIOx == GPIOH))
 
 /*
    typedef struct
