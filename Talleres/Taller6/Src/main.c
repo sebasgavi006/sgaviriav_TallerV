@@ -19,11 +19,15 @@ enum{
 	MODULO
 };
 
+
 void verificarFor(void); //Declaramos la función verificarFor
 
 calculadora(uint16_t int1, uint8_t operacion, uint16_t int2);
 
 variablel(uint8_t var);
+
+Factorial(uint16_t var)
+
 
 
 /* Función main del programa */
@@ -36,6 +40,9 @@ int main(void){
 
 	uint16_t var = variablel(25);
 	(void) var;
+
+	uint32_t factorial = Factorial(4);
+	(void) factorial;
 
 
 	while(1);	//Este ciclo onfinito ejecuta la función main indefinidamente
@@ -111,4 +118,16 @@ uint8_t variablel(uint8_t var){
 		contador += 1;
 	}
 	return contador;
+}
+
+
+uint32_t Factorial(uint16_t var){
+	uint16_t contador = 0;
+	uint16_t suma = var;
+
+	while(contador < var){
+		contador += 1;
+		suma += var - 1;
+	}
+	return suma;
 }
