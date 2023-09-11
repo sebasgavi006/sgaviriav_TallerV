@@ -22,11 +22,11 @@ enum{
 
 void verificarFor(void); //Declaramos la función verificarFor
 
-calculadora(uint16_t int1, uint8_t operacion, uint16_t int2);
+uint16_t calculadora(uint16_t int1, uint8_t operacion, uint16_t int2);
 
-variablel(uint8_t var);
+uint8_t variablel(uint8_t var);
 
-Factorial(uint16_t var)
+uint32_t Factorial(uint16_t var);
 
 
 
@@ -57,7 +57,7 @@ void verificarFor(void){
 	 * un valor específico (una especie de activación y desactivación).
 	 */
 
-	for(uint8_t i = 0; 1 < 10; i += 1){
+	for(uint8_t i = 0; i < 10; i += 1){
 		contador += 1;
 
 		if(contador < 3){
@@ -122,12 +122,12 @@ uint8_t variablel(uint8_t var){
 
 
 uint32_t Factorial(uint16_t var){
-	uint16_t contador = 0;
-	uint16_t suma = var;
+	uint16_t facto = 1;
 
-	while(contador < var){
-		contador += 1;
-		suma += var - 1;
+	while(var != 0){
+		facto *= var;
+		var -= 1;
+
 	}
-	return suma;
+	return facto;
 }
