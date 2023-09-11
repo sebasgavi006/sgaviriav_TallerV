@@ -1,45 +1,114 @@
 
-#include <stdio.h>
 #include <stdint.h>
 
-uint8_t variableGlobal = 0; /* Es una variable globlal, esta fuera de la funcion "main". Es global para el programa.
- 	 	 	 	 	 	 	   Todas las funciones pueden acceder a esta variable */
-uint8_t num1 = 2;
-uint8_t num2 = 3;
+/*
+ * Verificación del ciclo for
+ */
+#define SET		1
+#define RESET	0
 
-/* Estos se conocen como Protocolos. Ponemos los headers de la funcion. Asi el compilador saber que las funciones existen*/
-void sumaGlobal(void);
-void sumaLocal(void);
+uint8_t flag3 = 0; //Variables globales del programa
+uint8_t flag6 = 0;
+uint8_t flag9 = 0;
 
-// void SIGNIFICA QUE LA FUNCION NO RETORNA NADA!
+enum{
+	SUMA	= 0,
+	RESTA,
+	MULTIPLICACION,
+	DIVISION,
+	MODULO
+};
+
+void verificarFor(void); //Declaramos la función verificarFor
+
+calculadora(uint16_t int1, uint8_t operacion, uint16_t int2);
+
+variablel(uint8_t var);
 
 
-int main(void)	// Se usa el "void" como parametro de la funcion main para evitar errores a la
-{				// salida del programa, es decir, que la salida sea 0 (Return 0) (Buena practica de programacion)
+/* Función main del programa */
+int main(void){
 
-	for(uint8_t i = 0; i < 10; i++){	// Definicion de un for desde 0 hasta 9, con paso de 1 en 1. (Se define la variable
-		sumaGlobal();								// i dentro del mismo ciclo
+	verificarFor();
+
+	uint16_t resSuma = calculadora(4, SUMA, 9);
+	(void) resSuma;
+
+	uint16_t var = variablel(25);
+	(void) var;
+
+
+	while(1);	//Este ciclo onfinito ejecuta la función main indefinidamente
+}
+
+
+void verificarFor(void){
+	uint8_t contador = 0;
+
+	/*
+	 * Aquí ubicamos flags que se "activan" cuando el contador alcance
+	 * un valor específico (una especie de activación y desactivación).
+	 */
+
+	for(uint8_t i = 0; 1 < 10; i += 1){
+		contador += 1;
+
+		if(contador < 3){
+			flag3 = 1;
+		}
+		else if(contador >= 3 && contador < 6){
+			flag3 = 0;
+			flag6 = 1;
+		}
+		else{
+			flag6 = 0;
+			flag9 = 1;
+		}
+	}
+}
+
+uint16_t calculadora(uint16_t int1, uint8_t operacion, uint16_t int2){
+	uint16_t res = 0;
+
+	/*
+	 * A la operación Switch le pasamos una variable y evaluamos sobre ella
+	 * diferentes casos (case) y realizar una opción cuando se alcance uno
+	 * de los casos propuestos
+	 */
+	switch(operacion){
+	case SUMA:
+		res = int1 + int2;
+		break;	//Usamos el break para terminar la evaluación del case
+
+	case RESTA:
+		res = int1 - int2;
+		break;
+
+	case MULTIPLICACION:
+		res = int1 * int2;
+		break;
+
+	case DIVISION:
+		res = int1 / int2;
+		break;
+
+	case MODULO:
+		res = int1 % int2;
+		break;
 	}
 
-	sumaGlobal();	// Aqui llamamos las funciones a traves del main
-	sumaLocal();
-
-	return 0;
-}
-
-/* Funcion para sumar una variable global*/
-void sumaGlobal(void) {
-	variableGlobal += 1;
-}
-
-/* Funcion para sumar una variable local */
-void sumaLocal(void) {
-	uint8_t variableLocal = 0; // Esta es una variable local
-	variableLocal += 1;
-}
-
-/* Funcion que SI retorna un valor */
-uint8_t sumar(void){
-	uint8_t res = num1 + num2;
 	return res;
+}
+
+uint8_t variablel(uint8_t var){
+	uint8_t contador = 0;
+
+	/*
+	 * Uso del ciclo While.
+	 * Importante que la variable del contador sí pueda salir del ciclo
+	 */
+	while(contador < var){
+		contador += 1;
+	}
+	return contador;
 }
