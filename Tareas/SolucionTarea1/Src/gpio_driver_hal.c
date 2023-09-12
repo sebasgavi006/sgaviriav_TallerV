@@ -182,7 +182,7 @@ void gpio_config_output_speed(GPIO_Handler_t *pGPIOHandler){	//Función privada
 	uint32_t auxConfig = 0;
 
 	/* Verificamos si el tipo de salida que se ha seleccionado se puede utilizar */
-	assert_param(IS_GPIO_UOTPUT_TYPE(pGPIOHandler->pinConfig.GPIO_PinOutputSpeed));
+	assert_param(IS_GPIO_SPEED(pGPIOHandler->pinConfig.GPIO_PinOutputSpeed));
 
 	/*
 	 * Leemos la config, moviendo "PinNumber" veces hacia la izquierda
@@ -208,7 +208,7 @@ void gpio_config_pullup_pulldown(GPIO_Handler_t *pGPIOHandler){	//Función priva
 	uint32_t auxConfig = 0;
 
 	/* Verificamos si el tipo de salida que se ha seleccionado se puede utilizar */
-	assert_param(IS_GPIO_UOTPUT_TYPE(pGPIOHandler->pinConfig.GPIO_PinPuPdControl));
+	assert_param(IS_GPIO_PUPDR(pGPIOHandler->pinConfig.GPIO_PinPuPdControl));
 
 	/*
 	 * Leemos la config, moviendo "PinNumber" veces hacia la izquierda
@@ -229,7 +229,7 @@ void gpio_config_pullup_pulldown(GPIO_Handler_t *pGPIOHandler){	//Función priva
 /*
  * Allows to configure other functions (more specialized) on the selected PinX
  */
-void gpio_config_output_type(GPIO_Handler_t *pGPIOHandler){	//Función privada
+void gpio_config_alternate_function(GPIO_Handler_t *pGPIOHandler){	//Función privada
 
 	uint32_t auxPosition = 0;
 
@@ -248,21 +248,63 @@ void gpio_config_output_type(GPIO_Handler_t *pGPIOHandler){	//Función privada
 		}
 		else{
 			// Estamos en el registro AFRH, que controla los pines del PIN_8 al PIN_15
-						auxPosition = 4 * (pGPIOHandler->pinConfig.GPIO_PinNumber -8);
+			auxPosition = 4 * (pGPIOHandler->pinConfig.GPIO_PinNumber -8);
 
-						// Limpiamos primero la posición del registro que deseamos escribir a continuación
-						pGPIOHandler->pGPIOx->AFR[1] &= ~(0b1111 << auxPosition);
+			// Limpiamos primero la posición del registro que deseamos escribir a continuación
+			pGPIOHandler->pGPIOx->AFR[1] &= ~(0b1111 << auxPosition);
 
-						// Y escribimos el valor configurado en la posición seleccionada
-						pGPIOHandler->pGPIOx->AFR[1] |= (pGPIOHandler->pinConfig.GPIO_PinAltFunMode << auxPosition);
+			// Y escribimos el valor configurado en la posición seleccionada
+			pGPIOHandler->pGPIOx->AFR[1] |= (pGPIOHandler->pinConfig.GPIO_PinAltFunMode << auxPosition);
 		}
 	}
 }
+
 
 /*
  * Función utilizada para cambiar de estado el pin entregado en el handler,
  * asignando el valor entregado en la variable newState
  */
 void gpio_WritePin(GPIO_Handler_t *pPinHandler, uint8_t newState){	// Función pública
+
+	/* Verificamos si la acción que deseamos realizar es permitida */
+	assert_param(IS_GPIO_PIN_ACTION(newState));
+
+	/* Limpiams la posición que deseamos */
+	if(newState == SET){
+		//Trabajando con la parte baja del registro
+		pPinHandler->pGPIOx->BSRR |= (SET << pPinHandler->pinConfig.GPIO_PinNumber);
+	}
+	else{
+		//Trabajando con la parte alta del registro
+		pPinHandler->pGPIOx->BSRR |= (SET << pPinHandler->pinConfig.GPIO_PinNumber + 16);
+	}
+
+}
+
+
+/*
+ * Función para leer el estado de un pin específico
+ */
+uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
+	// Creamos una variable auxiliar la cual luego retornamos
+	uint32_t pinValue = 0;
+
+	/*
+	 * Cargamos una variable del registro IDR, desplazando a la derecha
+	 * tantas vecer como la ubicación del pin específico
+	 */
+	pinValue = (pPinHandler->pGPIOx->IDR << pPinHandler->pinConfig.GPIO_PinNumber);
+	pinValue = pinValue;
+
+	return pinValue;
+
+}
+
+
+/* ============ PREGUNTA 2 DE LA PARTE_B DE LA TAREA_1 ============
+ *
+ * Función para cambiar el estado de un PinX, al estado opuesto del actual
+ */
+void gpio_TooglePin(GPIO_Handler_t *pPinHandler){
 
 }
