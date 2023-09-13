@@ -38,6 +38,10 @@ uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
 	* El segundo error, es que se escribe una línea redundante donde se le asigna a la variable pinValue su mismo valor.
 	*
 	* El tercer error es que no se hace uso en ningún momento de una máscara para obtener el valor del PinX que queremos leer.
+	*
+	* ADICIONAL: Para mejorar las práctias de programación, cambiamos el valor de la función gpio_ReadPin a una variable de
+	* 8-bits, pues el valor que retorna la función es simplemente 0 ó 1 y no es prácticp almacenar este valor en un tipo de dato
+	* de mayor tamaño.
 
   ========================= SOLUCIÓN DE ERRORES =========================
 	* El primer error se soluciona cargando únicamente el registro IDR del puerto GPIOx en la variable pinValue.
@@ -49,7 +53,7 @@ uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
 	* el valor del estado de dicho pin, que estaba almacenado en el registro IDR.
 	*
 	* Finalmente, se hace un right shift para ubicar el valor leído del PinX en la primera posición del número binario y se almacena
-	* nuevamente en la variable pinValue, y así poder retornar únicamente un número cuyo valor sea 1 o 0, según el caso.
+	* nuevamente en la variable pinValue, y así poder retornar únicamente un número cuyo valor sea 0 ó 1, según el caso.
 
 */
 
@@ -79,6 +83,9 @@ int main(void)
 
 	gpio_WritePin(&userLed, SET);	// Esta función pone a alumbrar el led de estado de la board de desarrollo
 
+	gpio_ReadPin(&userLed); // Prueba de la función gpio_ReadPin
+
+	gpio_TooglePin(&userLed); // Prueba de la función gpio_TooglePin
 	gpio_ReadPin(&userLed);
 
 	while(1);	//La función main queda activa indefinidamente (infinite loop)

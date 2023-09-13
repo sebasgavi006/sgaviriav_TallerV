@@ -310,15 +310,27 @@ uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
 	pinValue >>= pPinHandler->pinConfig.GPIO_PinNumber;
 
 	/* Devolvemos el valor leído del PinX */
-	return pinValue;
+	return (uint8_t)pinValue;	// Se hace un casting de la variable pinValue de 32-bits a 8 bits
 
 }
 
 
-/* ============ PREGUNTA 2 DE LA PARTE_B DE LA TAREA_1 ============
+/* =============== PREGUNTA 2 DE LA PARTE_B DE LA TAREA_1 ================
  *
  * Función para cambiar el estado de un PinX, al estado opuesto del actual
  */
 void gpio_TooglePin(GPIO_Handler_t *pPinHandler){
+	// Definimos una variable auxiliar para guardar el estado del PinX
+	uint8_t auxVal = 0; // Se define de 8-bits para poder utilizarla como parámetro en la función gpio_WritePin, sin que hayan truncamientos
+
+	/*
+	 * Leemos el estado del PinX y aplicamos la operación booleana BANG, que devuelve el valor binario justamente
+	 * contrario al estado actual (0b1 si el estado del PinX es 0b0, 0b0 si el estado del PinX es 0b1).
+	 * Cargamos el estado "negado" en la variable auxVal
+	 */
+	auxVal = !gpio_ReadPin(pPinHandler);
+
+	/* Se cambia el estado del PinX al estado opuesto */
+	gpio_WritePin(pPinHandler, auxVal);
 
 }
