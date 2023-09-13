@@ -15,11 +15,55 @@
 // Header definition
 int add(int x, int y);
 
+
+/* ========================= PREGUNTA 1 ========================= */
+/* ===== A continuación se muestra una COPIA del código mostrado en los videos (código con errores) =====
+
+uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
+	uint32_t pinValue = 0;
+	pinValue = (pPinHandler->pGPIOx->IDR << pPinHandler->pinConfig.GPIO_PinNumber);
+	pinValue = pinValue;
+
+	return pinValue;
+
+}
+
+  ========================= ERRORES DEL CÓDIGO =========================
+	* El primer error está en la definición de la variable PinValue. Esta variable almacena el valor de
+	* todo el registro IDR del puerto GPIOx correspondiente, y desplaza el valor completo del registro
+	* "PinNumber" veces a la izquierda (shift left), por lo que no se obtiene un número binario sin sentido
+	* para el propósito de la función. Finalmente se retorna ese valor, y por ende la lectura del PinX es
+	* incorrecta.
+	*
+	* El segundo error, es que se escribe una línea redundante donde se le asigna a la variable pinValue su mismo valor.
+	*
+	* El tercer error es que no se hace uso en ningún momento de una máscara para obtener el valor del PinX que queremos leer.
+
+  ========================= SOLUCIÓN DE ERRORES =========================
+	* El primer error se soluciona cargando únicamente el registro IDR del puerto GPIOx en la variable pinValue.
+	* Este número binario contiene el estado de todos los pines pertenecientes al puerto GPIOx.
+	*
+	* Posteriormente creamos una máscara que nos permite ubicar la posición del bit específico del PinX dentro del registro.
+	* Luego se hace una operación AND entre la máscara y el valor guardado en la variable pinValue, lo que permite obtener un
+	* número binario donde los bits de todas las posiciones son 0, y la posición que corresponde al pin específico PinX tendrá
+	* el valor del estado de dicho pin, que estaba almacenado en el registro IDR.
+	*
+	* Finalmente, se hace un right shift para ubicar el valor leído del PinX en la primera posición del número binario y se almacena
+	* nuevamente en la variable pinValue, y así poder retornar únicamente un número cuyo valor sea 1 o 0, según el caso.
+
+*/
+
 // Definimos un Pin de pruebas
+/*
+ * En esta parte, creamos un "objeto" que obtiene los "atributos" de la
+ * "clase" (realmente es una estructura aquí en C) GPIO_Handler_t.
+ * A su vez, la estructura "hereda" los "atributos y métodos" de las clases
+ * que conforman la estructura: GPIO_TypeDef y GPIO_PinConfig_t
+ */
 GPIO_Handler_t userLed = {0}; // PinA5
 
 
-/* Te main function, where everything happens */
+/* The main function, where everything happens */
 int main(void)
 {
 	/* Configuramos el pin */
@@ -35,7 +79,9 @@ int main(void)
 
 	gpio_WritePin(&userLed, SET);	// Esta función pone a alumbrar el led de estado de la board de desarrollo
 
-	while(1);
+	gpio_ReadPin(&userLed);
+
+	while(1);	//La función main queda activa indefinidamente (infinite loop)
 
 }
 

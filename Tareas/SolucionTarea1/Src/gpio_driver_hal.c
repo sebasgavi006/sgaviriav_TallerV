@@ -286,16 +286,30 @@ void gpio_WritePin(GPIO_Handler_t *pPinHandler, uint8_t newState){	// Función p
  * Función para leer el estado de un pin específico
  */
 uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
-	// Creamos una variable auxiliar la cual luego retornamos
+	// Creamos unas variable auxiliares para la máscara y para devolver el valor leído del PinX
 	uint32_t pinValue = 0;
+	uint32_t mask = 0;
 
 	/*
-	 * Cargamos una variable del registro IDR, desplazando a la derecha
-	 * tantas vecer como la ubicación del pin específico
+	 * Cargamos una variable con el valor del registro IDR del periférico GPIOx
 	 */
-	pinValue = (pPinHandler->pGPIOx->IDR << pPinHandler->pinConfig.GPIO_PinNumber);
-	pinValue = pinValue;
+	pinValue = pPinHandler->pGPIOx->IDR;
 
+	/*
+	 * - Creamos una máscara para obtener un binario que contiene únicamente el valor del pin que nos interesa (PinX).
+	 * - Hacemos un AND bitwise entre el valor del registro IDR y la máscara para extraer el valor del PinX
+	 */
+	mask = SET << pPinHandler->pinConfig.GPIO_PinNumber;
+	pinValue &= mask;
+
+	/*
+	 * Desplazamos el valor del bit del pin que acabamos obtener, "PinNumber" veces a la derecha para que quede en
+	 * el bit 0, y lo asignamos a la variable pinValue
+	 */
+
+	pinValue >>= pPinHandler->pinConfig.GPIO_PinNumber;
+
+	/* Devolvemos el valor leído del PinX */
 	return pinValue;
 
 }
