@@ -74,7 +74,9 @@ void verificarFor(void){
 	}
 }
 
-uint16_t calculadora(uint16_t int1, uint8_t operacion, uint16_t int2){
+/* Creamos una función Calculadora, que recibe tres parámetros: número, operación, número*/
+uint16_t calculadora(uint16_t int1, uint8_t operacion, uint16_t int2){	/* El mínimo de tamaño que puede tener una variable de la
+																		 * librería stdint.h es de 1 byte (8 bits) */
 	uint16_t res = 0;
 
 	/*
@@ -82,7 +84,8 @@ uint16_t calculadora(uint16_t int1, uint8_t operacion, uint16_t int2){
 	 * diferentes casos (case) y realizar una opción cuando se alcance uno
 	 * de los casos propuestos
 	 */
-	switch(operacion){
+	switch(operacion)
+	{
 	case SUMA:
 		res = int1 + int2;
 		break;	//Usamos el break para terminar la evaluación del case
@@ -102,10 +105,13 @@ uint16_t calculadora(uint16_t int1, uint8_t operacion, uint16_t int2){
 	case MODULO:
 		res = int1 % int2;
 		break;
-	}
 
+	default:
+		break;
+	}
 	return res;
 }
+
 
 uint8_t variablel(uint8_t var){
 	uint8_t contador = 0;
