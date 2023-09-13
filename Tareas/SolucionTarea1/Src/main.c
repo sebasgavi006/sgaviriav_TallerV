@@ -13,7 +13,7 @@
 
 
 // Header definition
-ind add(int x, int y);
+int add(int x, int y);
 
 // Definimos un Pin de pruebas
 GPIO_Handler_t userLed = {0}; // PinA5
@@ -33,7 +33,7 @@ int main(void)
 	/* Cargamos la configuración en los registros que gobiernan el puerto */
 	gpio_Config(&userLed); // Esta es la función pública de configuración
 
-	gpio_WritenPin(&userLed, SET);	// Esta función pone a alumbrar el led de estado de la board de desarrollo
+	gpio_WritePin(&userLed, SET);	// Esta función pone a alumbrar el led de estado de la board de desarrollo
 
 	while(1);
 

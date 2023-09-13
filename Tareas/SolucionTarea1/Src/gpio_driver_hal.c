@@ -41,7 +41,7 @@ void gpio_Config (GPIO_Handler_t *pGPIOHandler){	// Función pública
 	gpio_config_mode(pGPIOHandler);
 
 	// 3) Configurando el registro GPIOx_OTYPER
-	pio_config_output_type(pGPIOHandler);
+	gpio_config_output_type(pGPIOHandler);
 
 	// 4) Configurando el registro GPIOx_SPEED (velocidad de salida)
 	gpio_config_output_speed(pGPIOHandler);
@@ -60,7 +60,7 @@ void gpio_Config (GPIO_Handler_t *pGPIOHandler){	// Función pública
 void gpio_enable_clock_peripheral(GPIO_Handler_t *pGPIOHandler){	// Función privada
 
 	// Verificamos que el puerto configurado si es permitido
-	assert_parameter(IS_GPIO_ALL_INSTANCE(pGPIOHandler->pGPIOx));
+	assert_param(IS_GPIO_ALL_INSTANCE(pGPIOHandler->pGPIOx));
 
 	// Verificamos para GPIOA
 		if(pGPIOHandler->pGPIOx == GPIOA){
@@ -276,7 +276,7 @@ void gpio_WritePin(GPIO_Handler_t *pPinHandler, uint8_t newState){	// Función p
 	}
 	else{
 		//Trabajando con la parte alta del registro
-		pPinHandler->pGPIOx->BSRR |= (SET << pPinHandler->pinConfig.GPIO_PinNumber + 16);
+		pPinHandler->pGPIOx->BSRR |= (SET << (pPinHandler->pinConfig.GPIO_PinNumber + 16));
 	}
 
 }

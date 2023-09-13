@@ -107,7 +107,7 @@
  * componen el periferico RCC.
  *
  * Debido a los temas que se van a manejar en el curso, solo se deben definir los bits de los
- * registros: 6.3.1 (RCC_CR) hasta el 6.3.12 (RCC_APB2ENR), 6.3.17 (RCC:BDCR) y 6.318 (RCC_CSR)
+ * registros: 6.3.1 (RCC_CR) hasta el 6.3.12 (RCC_APB2ENR), 6.3.17 (RCC_BDCR) y 6.318 (RCC_CSR)
  *
  * ==================================== ¡¡¡IMPORTANTE!!! =====================================
  * NOTA: La posicion de memoria (offset) debe encajar perfectamente con la posicion de memoria
@@ -200,7 +200,7 @@ typedef struct
 /* ========== FIN de la descripcion de los elementos que componen el periferico ==========
 
 
-/* ++++++++++ Posibles valores de las configuraciones
+ * Posibles valores de las configuraciones
  * System Clock (main clock) possible options
  * Microcontroller Clock Output1 (MC01) options
  * Microcontroller preescale Clock Output1 (MC01PRE) options
