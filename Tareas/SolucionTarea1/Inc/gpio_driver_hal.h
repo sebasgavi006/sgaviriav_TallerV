@@ -111,6 +111,18 @@ enum
 	AF15	= 0b1111
 };
 
+enum
+{
+	bit_0	= 0,
+	bit_1,
+	bit_2,
+	bit_3,
+	bit_4,
+	bit_5,
+	bit_6
+
+}; // Numeración de los bits para la función clock_mask
+
 
 #define GPIO_PIN_MASK	0x0FU	// Pin mask for assert test
 
@@ -167,6 +179,7 @@ void gpio_Config (GPIO_Handler_t *pGPIOHandler);
 void gpio_WritePin (GPIO_Handler_t *pPinHandler, uint8_t newState);
 void gpio_TooglePin (GPIO_Handler_t *pPinHandler);
 uint32_t gpio_ReadPin (GPIO_Handler_t *pPinHandler);
+uint8_t clock_mask(uint8_t segundo, uint8_t bit);
 
 
 #endif /* GPIO_DRIVER_HAL_H_ */

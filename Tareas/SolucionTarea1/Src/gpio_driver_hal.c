@@ -334,3 +334,55 @@ void gpio_TooglePin(GPIO_Handler_t *pPinHandler){
 	gpio_WritePin(pPinHandler, auxVal);
 
 }
+
+
+/* =============== CONTADOR DE SEGUNDOS BINARIO UP-DOWN ===============
+ *
+ * La función máscara permíte obtener el valor a escribir en cada bit del reloj
+ */
+uint8_t clock_mask(uint8_t segundos, uint8_t bit){
+
+	uint8_t auxMask = 0; // Definimos una variable auxiliar para las máscaras
+
+	switch(bit){
+	case bit_0:
+		auxMask = segundos & (SET << bit_0);
+		auxMask = auxMask && auxMask;
+		break;
+
+	case bit_1:
+		auxMask = segundos & (SET << bit_1);
+		auxMask = auxMask && auxMask;
+		break;
+
+	case bit_2:
+		auxMask = segundos & (SET << bit_2);
+		auxMask = auxMask && auxMask;
+		break;
+
+	case bit_3:
+		auxMask = segundos & (SET << bit_3);
+		auxMask = auxMask && auxMask;
+		break;
+
+	case bit_4:
+		auxMask = segundos & (SET << bit_4);
+		auxMask = auxMask && auxMask;
+		break;
+
+	case bit_5:
+		auxMask = segundos & (SET << bit_5);
+		auxMask = auxMask && auxMask;
+		break;
+
+	case bit_6:
+		auxMask = segundos & (SET << bit_6);
+		auxMask = auxMask && auxMask;
+		break;
+
+	default:
+		break;
+	}
+
+	return auxMask; // Devuelve la máscara según la posición de bit deseada
+}

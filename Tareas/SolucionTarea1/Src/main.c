@@ -67,6 +67,26 @@ uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
 GPIO_Handler_t userLed = {0}; // PinA5
 
 
+/* c
+ *
+ * Iniciamos configurando los pines que se usaran como Salidas de proposito general
+ * para poder encender y apagar los leds que irán conectados a ellos
+ */
+
+// Se definen e inicializan los pines que vamos a utilizar
+// Se describen además los números de los pines físicos, según doc. STM32-nucleo64-boards
+//							// (6.12 - Table 29. ST morpho connector on NUCLEO-F411RE)
+GPIO_Handler_t PA7 = {0};	// bit-0 (CN10 - Pin 15)
+GPIO_Handler_t PC8 = {0};	// bit-1 (CN10 - Pin 2)
+GPIO_Handler_t PC7 = {0};	// bit-2 (CN10 - Pin 19)
+GPIO_Handler_t PA6 = {0};	// bit-3 (CN10 - Pin 13)
+GPIO_Handler_t PB8 = {0};	// bit-4 (CN10 - Pin 3)
+GPIO_Handler_t PC6 = {0};	// bit-5 (CN10 - Pin 4)
+GPIO_Handler_t PC9 = {0};	// bit-6 (CN10 - Pin 1)
+GPIO_Handler_t PC13 = {0};	// USER_BUTTON (6.5 Push_buttons) (CN7 - Pin 23)
+
+
+
 /* The main function, where everything happens */
 int main(void)
 {
@@ -88,9 +108,117 @@ int main(void)
 	gpio_TooglePin(&userLed); // Prueba de la función gpio_TooglePin
 	gpio_ReadPin(&userLed);
 
-	while(1);	//La función main queda activa indefinidamente (infinite loop)
 
-}
+	/* =============== CONTADOR DE SEGUNDOS BINARIO UP-DOWN ===============
+	 *
+	 * Configuramos los pines a sus respectivos puertos, números y modos de funcionamiento
+	 */
+
+	// Configurando el PA7 -> bit-0
+	PA7.pGPIOx							= GPIOA;
+	PA7.pinConfig.GPIO_PinNumber		= PIN_7;
+	PA7.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PA7.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PA7.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PA7.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	// Configurando el PC8 -> bit-1
+	PC8.pGPIOx							= GPIOC;
+	PC8.pinConfig.GPIO_PinNumber		= PIN_8;
+	PC8.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PC8.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PC8.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PC8.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	// Configurando el PC7 -> bit-2
+	PC7.pGPIOx							= GPIOC;
+	PC7.pinConfig.GPIO_PinNumber		= PIN_7;
+	PC7.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PC7.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PC7.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PC7.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	// Configurando el PA6 -> bit-3
+	PA6.pGPIOx							= GPIOA;
+	PA6.pinConfig.GPIO_PinNumber		= PIN_6;
+	PA6.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PA6.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PA6.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PA6.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	// Configurando el PB8 -> bit-4
+	PB8.pGPIOx							= GPIOB;
+	PB8.pinConfig.GPIO_PinNumber		= PIN_8;
+	PB8.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PB8.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PB8.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PB8.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	// Configurando el PC6 -> bit-5
+	PC6.pGPIOx							= GPIOC;
+	PC6.pinConfig.GPIO_PinNumber		= PIN_6;
+	PC6.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PC6.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PC6.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PC6.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	// Configurando el PC9 -> bit-6
+	PC9.pGPIOx							= GPIOC;
+	PC9.pinConfig.GPIO_PinNumber		= PIN_9;
+	PC9.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PC9.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PC9.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PC9.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	// Configurando el PC13 -> USER_BUTTON
+	PC13.pGPIOx							= GPIOC;
+	PC13.pinConfig.GPIO_PinNumber		= PIN_13;
+	PC13.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+	PC13.pinConfig.GPIO_PinOutputType	= GPIO_OTYPE_PUSHPULL;
+	PC13.pinConfig.GPIO_PinOutputSpeed	= GPIO_OSPEED_MEDIUM;
+	PC13.pinConfig.GPIO_PinPuPdControl	= GPIO_PUPDR_NOTHING;
+
+	/* Ciclo for para Delay de 1 segundo
+	 *
+	 * Dado que la velcoidad de reloj del micricontrolador es de 8 MHz y 16 MHz (idealmente),
+	 * podemos crear un ciclo for "vacío" que se repita 8-16 millones de veces y que al finalizar,
+	 * aumenta un contador en uno (1). Este contador sería nuestro reloj.
+	 */
+
+	uint32_t signalClock = 8000000;	// Variable con la frecuencia de reloj del micro
+
+	while(1){ //La función main queda activa indefinidamente (infinite loop) dentro del reloj
+
+		for(uint8_t reloj = 1; reloj <= 60; reloj++){
+
+			uint8_t userButton = gpio_ReadPin(&PC13); // Se lee el estado del USER_BUTTON
+
+			// Reloj avanzando -> USER_BOTTON NO está presionado
+			if(userButton == 0){
+				for(uint32_t i = 0; i < signalClock; i++ ); // For para el delay de un segundo aproximadamente
+
+				/* Se actualiza el estado de cada LED según el segundo que indique el reloj */
+				gpio_WritePin(&PA7, clock_mask(reloj, bit_0));
+				gpio_WritePin(&PC8, clock_mask(reloj, bit_1));
+				gpio_WritePin(&PC7, clock_mask(reloj, bit_2));
+				gpio_WritePin(&PA6, clock_mask(reloj, bit_3));
+				gpio_WritePin(&PB8, clock_mask(reloj, bit_4));
+				gpio_WritePin(&PC6, clock_mask(reloj, bit_5));
+				gpio_WritePin(&PC9, clock_mask(reloj, bit_6));
+
+			} // Fin if (Reloj avanzando)
+
+			else{
+
+			} // Fin else (Reloj en cuenta regresiva)
+
+		} // Fin for
+
+	} // Fin While
+
+
+} // Fin main
+
 
 /*
  * Esta función sirve para detectar problemas de parámetros
@@ -102,5 +230,4 @@ void assert_failed(uint8_t* file, uint32_t line){
 		// problems...
 	}
 }
-
 
