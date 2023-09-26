@@ -38,7 +38,7 @@ int main(void)
 
 		gpio_TooglePin(&userLed);
 		for(uint32_t j = 0; j < 200000; j++){
-			_NOP();
+			__NOP();
 		}
 
 	}
