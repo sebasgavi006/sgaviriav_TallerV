@@ -129,7 +129,7 @@ void timer_Config(Timer_Handler_t *pTimerHandler){	// Llamamos la función públ
 
 	 // Hace falta algo (Mirar si cuenta ascendente o descendente)
 
-	 // Configuramos el valor del autoreload
+	 // Configuramos el valor del autoreload (El periodo, tiene sentido)
 	 pTimerHandler->pTIMx->ARR |= pTimerHandler->TIMx_Config.TIMx_Period - 1;
  }
 

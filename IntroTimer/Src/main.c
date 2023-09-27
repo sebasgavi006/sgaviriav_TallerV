@@ -2,7 +2,7 @@
  ******************************************************************************
  * @file           : main.c
  * @author         : Sebastian Gaviria Valencia
- * @brief          : Timer
+ * @brief          : Basic project, base for all new projects
  ******************************************************************************
  **/
 
@@ -30,24 +30,38 @@ int main(void)
 	userLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	userLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	/* Cargamos la configuración */
+	/* Cargamos la configuración del pin */
 	gpio_Config(&userLed);
 	gpio_WritePin(&userLed, SET);
+
+	/* Configurando el Timer */
+	blinkTimer.pTIMx								= TIM2;
+	blinkTimer.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
+	blinkTimer.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción
+	blinkTimer.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuante ascendente
+	blinkTimer.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
+
+	/* Cargamos la configuración del Timer */
+	timer_Config(&blinkTimer);
+
+	timer_SetState(&blinkTimer, TIMER_ON);
 
 
 	/* Loop forever */
 	while(1){
 
-		gpio_TooglePin(&userLed);
-		for(uint32_t j = 0; j < 200000; j++){
-			__NOP();
-		}
-
 	}
 
-	return 0;
+
 }
 
+
+/*
+ * Overwiter function
+ */
+void Timer2_Callback(void){
+	gpio_TooglePin(&userLed);
+}
 
 /* Función assert para detectar problemas de paŕametros incorrectos */
 void assert_failed(uint8_t* file, uint32_t line){
