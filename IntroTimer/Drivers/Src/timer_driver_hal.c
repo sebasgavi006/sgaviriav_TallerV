@@ -117,23 +117,6 @@ void timer_Config(Timer_Handler_t *pTimerHandler){	// Llamamos la función públ
 
 
  /*
-  * Esta función configura el límite hasta donde cuenta el Timer para generar un
-  * evento "update" (cuando esta contando de forma ascendente), o configura
-  * el valor desde donde se comienza a contar, cuando el sistema funciona de forma
-  * descendente.
-  */
- void timer_set_period(Timer_Handler_t *pTimerHandler){
-
-	 // Verificamos que el valor que genera el periodo es válido
-	 assert_param(IS_TIMER_PERIOD(pTimerHandler->TIMx_Config.TIMx_Period));
-
-	 // Hace falta algo (Mirar si cuenta ascendente o descendente)
-
-	 // Configuramos el valor del autoreload (El periodo, tiene sentido)
-	 pTimerHandler->pTIMx->ARR |= pTimerHandler->TIMx_Config.TIMx_Period - 1;
- }
-
- /*
   * Upcounter o DownCounter
   */
  void timer_set_mode(Timer_Handler_t *pTimerHandler){
@@ -151,6 +134,25 @@ void timer_Config(Timer_Handler_t *pTimerHandler){	// Llamamos la función públ
 		 pTimerHandler->pTIMx->CR1 |= TIM_CR1_DIR;
 	 }
  }
+
+
+ /*
+  * Esta función configura el límite hasta donde cuenta el Timer para generar un
+  * evento "update" (cuando esta contando de forma ascendente), o configura
+  * el valor desde donde se comienza a contar, cuando el sistema funciona de forma
+  * descendente.
+  */
+ void timer_set_period(Timer_Handler_t *pTimerHandler){
+
+	 // Verificamos que el valor que genera el periodo es válido
+	 assert_param(IS_TIMER_PERIOD(pTimerHandler->TIMx_Config.TIMx_Period));
+
+	 // Hace falta algo
+
+	 // Configuramos el valor del autoreload (El periodo, tiene sentido)
+	 pTimerHandler->pTIMx->ARR = pTimerHandler->TIMx_Config.TIMx_Period - 1;
+ }
+
 
  /*
   * Función que permite configurar la interrupción
