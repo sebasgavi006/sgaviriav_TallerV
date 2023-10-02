@@ -98,7 +98,7 @@ void gpio_enable_clock_peripheral(GPIO_Handler_t *pGPIOHandler){	// Función pri
 			RCC->AHB1ENR |= (RCC_AHB1ENR_GPIOHEN);
 		}
 
-} // Fin función pricada Config Enable Clock Peripheral
+} // Fin función privada Config Enable Clock Peripheral
 
 
 /*

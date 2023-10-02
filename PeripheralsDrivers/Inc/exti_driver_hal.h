@@ -23,7 +23,7 @@ typedef struct
 	uint8_t			edgeType;		// Se selecciona si se desea un tipo de flanco subiendo o bajando
 }EXTI_Config_t;
 
-
+/* Se definen las funciones públicas del Driver del EXTI */
 void exti_Config(EXTI_Config_t *extiConfig);
 void callback_ExtInt0(void);
 void callback_ExtInt1(void);
