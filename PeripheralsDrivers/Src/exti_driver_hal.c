@@ -612,20 +612,103 @@ static void exti_select_edge(EXTI_Config_t *extiConfig){
 }
 
 /*
- * Funcion que configura las mascaras de interrupciones (registro de mascaras) y
- * ademas matricula cada una de las posibles interrupciones en el NVIC
+ * Funcion que configura las mascaras de interrupciones (registro de máscaras) y
+ * además matricula cada una de las posibles interrupciones en el NVIC
  * */
 static void exti_config_interrupt(EXTI_Config_t *extiConfig){
 	/* 6.0 Activamos la interrupción del canal que estamos configurando */
 		// Interrupt Mask Register
-		/*Agregue su código acá*/
+
+		/* Esta máscara se encarga de settear cuál será el canal (línea) que se va a usar */
+
+
 		switch (extiConfig->pGPIOHandler->pinConfig.GPIO_PinNumber) {
+
 		case 0: {
 			EXTI->IMR |= EXTI_IMR_IM0;
 			break;
 		}
 
+		case 1: {
+			EXTI->IMR |= EXTI_IMR_IM1;
+			break;
+		}
 
+		case 2: {
+			EXTI->IMR |= EXTI_IMR_IM2;
+			break;
+		}
+
+		case 3: {
+			EXTI->IMR |= EXTI_IMR_IM3;
+			break;
+		}
+
+		case 4: {
+			EXTI->IMR |= EXTI_IMR_IM4;
+			break;
+		}
+
+		case 5: {
+			EXTI->IMR |= EXTI_IMR_IM5;
+			break;
+		}
+
+		case 6: {
+			EXTI->IMR |= EXTI_IMR_IM6;
+			break;
+		}
+
+		case 7: {
+			EXTI->IMR |= EXTI_IMR_IM7;
+			break;
+		}
+
+		case 8: {
+			EXTI->IMR |= EXTI_IMR_IM8;
+			break;
+		}
+
+		case 9: {
+			EXTI->IMR |= EXTI_IMR_IM9;
+			break;
+		}
+
+		case 10: {
+			EXTI->IMR |= EXTI_IMR_IM10;
+			break;
+		}
+
+		case 11: {
+			EXTI->IMR |= EXTI_IMR_IM11;
+			break;
+		}
+
+		case 12: {
+			EXTI->IMR |= EXTI_IMR_IM12;
+			break;
+		}
+
+		case 13: {
+			EXTI->IMR |= EXTI_IMR_IM13;
+			break;
+		}
+
+
+		case 14: {
+			EXTI->IMR |= EXTI_IMR_IM14;
+			break;
+		}
+
+		case 15: {
+			EXTI->IMR |= EXTI_IMR_IM15;
+			break;
+		}
+
+		default: {
+			break;
+		}
+		}
 
 		/* 6.1 Matriculamos la interrupción en el NVIC para el canal correspondiente,
 		 * donde el canal 0 corresponde al EXTI_0, canal 1 al EXTI_1, etc.
@@ -633,30 +716,57 @@ static void exti_config_interrupt(EXTI_Config_t *extiConfig){
 		 * NOTA: Observar que algunos canales EXTI comparten un mismo vector de interrupción
 		 * */
 		switch (extiConfig->pGPIOHandler->pinConfig.GPIO_PinNumber) {
+
 		case 0: {
 			__NVIC_EnableIRQ(EXTI0_IRQn);
 			break;
 		}
 
-			case 1: {
-		/*Agregue su código acá*/
-		break;
-	}
-    /* .....
-     * .....
-     * ..... 
-     * y así hasta el ultimo caso */
+		case 1: {
+			__NVIC_EnableIRQ(EXTI1_IRQn);
+			break;
+		}
 
-	case 15: {
-		/*Agregue su código acá*/
-		break;
-	}
+		case 2: {
+			__NVIC_EnableIRQ(EXTI2_IRQn);
+			break;
+		}
 
-	default: {
-		break;
-	}
+		case 3: {
+			__NVIC_EnableIRQ(EXTI3_IRQn);
+			break;
+		}
 
-	}
+		case 4: {
+			__NVIC_EnableIRQ(EXTI4_IRQn);
+			break;
+		}
+
+		// Usamos la multiopción del switch para escribir menos código
+		case 5:
+		case 6:
+		case 7:
+		case 8:
+		case 9: {
+			__NVIC_EnableIRQ(EXTI9_5_IRQn);
+			break;
+		}
+
+		// Usamos la multiopción del switch para escribir menos código
+		case 10:
+		case 11:
+		case 12:
+		case 13:
+		case 14:
+		case 15: {
+			__NVIC_EnableIRQ(EXTI15_10_IRQn);
+			break;
+		}
+
+		default: {
+			break;
+		}
+		}
 }
 
 /**/
