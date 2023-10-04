@@ -52,8 +52,9 @@ static void exti_enable_clock_peripheral(void){
 	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 }
 
+
 /*
- * FunciÓn que configura los MUX para asignar el pinX del puerto Y
+ * Función que configura los MUX para asignar el pinX del puerto Y
  * a la entrada EXTI correspondiente.
  * */
 static void exti_assign_channel(EXTI_Config_t *extiConfig){
@@ -619,6 +620,7 @@ static void exti_select_edge(EXTI_Config_t *extiConfig){
 
         	/* Configuramos el flanco de bajada para que lance la interrupción en este canal */
         	EXTI->FTSR |= EXTI_FTSR_TR0;
+        	break;
         }
         case 1: {
 
@@ -731,6 +733,7 @@ static void exti_select_edge(EXTI_Config_t *extiConfig){
 
         	/* Configuramos el flanco de bajada para que lance la interrupción */
         	EXTI->RTSR |= EXTI_RTSR_TR0;
+        	break;
         }
         case 1: {
 
@@ -991,6 +994,7 @@ static void exti_config_interrupt(EXTI_Config_t *extiConfig){
 		}
 }
 
+
 /* Definición de los callbacks de las interrupciones de los EXTI, para que además puedan ser sobreescritos */
 __attribute__ ((weak)) void callback_extInt0(void){
 	__NOP();
@@ -1055,6 +1059,7 @@ __attribute__ ((weak)) void callback_extInt14(void){
 __attribute__ ((weak)) void callback_extInt15(void){
 	__NOP();
 }
+
 
 /* Las siguientes funciones Handler se encargan de atender la interrupción,
  * bajando la bandera  del registro PR (Pending Register -> La bandera en este
