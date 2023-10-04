@@ -996,67 +996,67 @@ static void exti_config_interrupt(EXTI_Config_t *extiConfig){
 
 
 /* Definición de los callbacks de las interrupciones de los EXTI, para que además puedan ser sobreescritos */
-__attribute__ ((weak)) void callback_extInt0(void){
+__attribute__ ((weak)) void callback_ExtInt0(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt1(void){
+__attribute__ ((weak)) void callback_ExtInt1(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt2(void){
+__attribute__ ((weak)) void callback_ExtInt2(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt3(void){
+__attribute__ ((weak)) void callback_ExtInt3(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt4(void){
+__attribute__ ((weak)) void callback_ExtInt4(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt5(void){
+__attribute__ ((weak)) void callback_ExtInt5(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt6(void){
+__attribute__ ((weak)) void callback_ExtInt6(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt7(void){
+__attribute__ ((weak)) void callback_ExtInt7(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt8(void){
+__attribute__ ((weak)) void callback_ExtInt8(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt9(void){
+__attribute__ ((weak)) void callback_ExtInt9(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt10(void){
+__attribute__ ((weak)) void callback_ExtInt10(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt11(void){
+__attribute__ ((weak)) void callback_ExtInt11(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt12(void){
+__attribute__ ((weak)) void callback_ExtInt12(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt13(void){
+__attribute__ ((weak)) void callback_ExtInt13(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt14(void){
+__attribute__ ((weak)) void callback_ExtInt14(void){
 	__NOP();
 }
 
-__attribute__ ((weak)) void callback_extInt15(void){
+__attribute__ ((weak)) void callback_ExtInt15(void){
 	__NOP();
 }
 
@@ -1072,7 +1072,6 @@ void EXTI0_IRQHandler(void){
 	if(EXTI->PR & EXTI_PR_PR0){
 		// Bajamos la bandera correspondiente
 		EXTI->PR |= EXTI_PR_PR0;
-
 		// Llamamos al callback
 		callback_ExtInt0();
 	}
