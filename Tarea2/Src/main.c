@@ -309,8 +309,10 @@ void Timer2_Callback(void){
  * */
 void Timer3_Callback(void){
 	gpio_TooglePin(&cristal1);
-	gpio_TooglePin(&cristal2);
 	displayNumber(contador);
+	gpio_TooglePin(&cristal2);
+
+
 
 
 }
