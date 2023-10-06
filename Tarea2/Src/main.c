@@ -14,6 +14,16 @@
 #include "timer_driver_hal.h"
 #include "exti_driver_hal.h"
 
+
+/* Definición de una variable contadora global */
+uint8_t contador = 0;
+
+/* Definición de una variable global para guardar el valor de data */
+uint8_t readData = 1;
+
+/* Definición de una variable para leer la dirección */
+uint8_t readModeLed = 1;
+
 /* Definición de los pines a utilizar */
 
 // Pin para el led de estado
@@ -24,9 +34,9 @@ GPIO_Handler_t modeLed = {0}; // Pin PD2  (led de modo [Directo o Inverso])
 
 
 // Pines para el encoder
-GPIO_Handler_t encoderClk = {0}; // Pin8 (Canal 8 del EXTI)
+GPIO_Handler_t encoderClk = {0}; // Pin PB8 (Canal 8 del EXTI)
 GPIO_Handler_t data = {0};	// Pin PB2
-GPIO_Handler_t sw = {0};	// Pin0 (Canal 0 del EXTI)
+GPIO_Handler_t sw = {0};	// Pin PA0 (Canal 0 del EXTI)
 
 // Pines para el 7-segmentos
 GPIO_Handler_t segmentoA = {0}; // Pin PB4
@@ -53,6 +63,24 @@ Timer_Handler_t sevenSegmentTimer3 = {0};	// Timer 3 para el 7-segmentos
 /* Definición de los EXTI para las interrupciones externas del encoder */
 EXTI_Config_t exti_0 = {0};	// Definimos el EXTI del Switch (estructura -> "objeto")
 EXTI_Config_t exti_8 = {0};	// Definimos el EXTI del Encoder (estructura -> "objeto")
+
+
+/* ===== Headers de las funciones a utilizar en el main ===== */
+
+// Función para mostrar un número ingresado como parámetro, por medios de ambos display
+void displayNumber(uint8_t numero);
+
+// Función para encender los leds del 7-segmentos, para representar el numero_x
+void numeros(uint8_t numero_x);
+
+// Función para evaluar si se aumenta o disminuye el contador
+void evaluate(void);
+
+// Función para contar ascedente
+void upCounter(void);
+
+// Función para contar descendente
+void downCounter(void);
 
 
 /* Función principal del programa */
@@ -124,13 +152,13 @@ int main(void)
 	/* Configuramos los pines del encoder */
 
 	/* Pin del Encoder Clock */
-	encoderClk.pGPIOx							= ;
-	encoderClk.pinConfig.GPIO_PinNumber			= ;
+	encoderClk.pGPIOx							= GPIOB;
+	encoderClk.pinConfig.GPIO_PinNumber			= PIN_8;
 	encoderClk.pinConfig.GPIO_PinMode			= GPIO_MODE_IN;
 
 	/* Pin del Switch */
-	sw.pGPIOx							= ;
-	sw.pinConfig.GPIO_PinNumber			= ;
+	sw.pGPIOx							= GPIOA;
+	sw.pinConfig.GPIO_PinNumber			= PIN_0;
 	sw.pinConfig.GPIO_PinMode			= GPIO_MODE_IN;
 
 	/* Pin del de la salida de datos del encoder */
@@ -197,8 +225,8 @@ int main(void)
 
 
 	/* Configuración del pin para el modeLed */
-	modeLed.pGPIOx								= ;
-	modeLed.pinConfig.GPIO_PinNumber			= ;
+	modeLed.pGPIOx								= GPIOD;
+	modeLed.pinConfig.GPIO_PinNumber			= PIN_2;
 	modeLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
 	modeLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	modeLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
@@ -260,6 +288,9 @@ void callback_ExtInt0(void){
  * a la interrupcón externa del encoder
  * */
 void callback_ExtInt8(void){
+	readData = gpio_ReadPin(&data);
+	readModeLed = gpio_ReadPin(&modeLed);
+	evaluate();
 
 }
 
@@ -274,11 +305,211 @@ void Timer2_Callback(void){
 
 /* Esta función atiende la interrupción del TIMER3, la cual controla el activación
  * de los cristales del 7-segmentos a una frecuencia que simule que ambos están
- * enendidos continuamente
+ * encendidos continuamente
  * */
 void Timer3_Callback(void){
+	gpio_TooglePin(&cristal1);
+	gpio_TooglePin(&cristal2);
+	displayNumber(contador);
+
 
 }
+
+
+/* ===== Funciones auxiliares ===== */
+
+// Función para encender los leds del 7-segmentos, para representar el numero_x
+void numeros(uint8_t numero_x){
+
+	// Hacemos un switch para cada numero del 0-9
+	switch(numero_x){
+	case 0:{
+		// El led se enciende cuando el voltaje dado por el pin sea bajo
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, SET);
+		break;
+	}
+
+	case 1:{
+		gpio_WritePin(&segmentoA, SET);
+		gpio_WritePin(&segmentoB, SET);
+		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoD, SET);
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, SET);
+		break;
+	}
+
+	case 2:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoF, SET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	case 3:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, SET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	case 4:{
+		gpio_WritePin(&segmentoA, SET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, SET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	case 5:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, SET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	case 6:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, SET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	case 7:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, SET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, SET);
+		gpio_WritePin(&segmentoG, SET);
+		break;
+	}
+
+	case 8:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	case 9:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, SET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	default:{
+		__NOP();
+		break;
+	}
+	}
+
+}
+
+
+// Función para mostrar un número ingresado como parámetro, por medios de ambos display
+void displayNumber(uint8_t numero){
+
+	/* Lo primero que debemos hacer, es diferenciar las decenas de las unidades dentro
+	 * del número decimal. Para ello, podemos usar el operador módulo
+	 */
+	uint8_t unidades = numero%10;
+	uint8_t decenas = (numero-unidades)/10;
+
+	if( gpio_ReadPin(&cristal1) == 1){
+		numeros(decenas);
+	}
+	else if(gpio_ReadPin(&cristal2) == 1){
+		numeros(unidades);
+	}
+
+}
+
+
+// Función para evaluar si se aumenta o disminuye el contador
+void evaluate(void){
+
+	// Modo directo
+	if(readModeLed == 1){
+		if(readData == 1){
+			// Giro en sentido horario -> Contador aumenta
+			if(contador < 99){
+				contador++;
+			}
+			else{
+				contador = 99;
+			}
+		}
+		else{
+			// Giro en sentido anti-horario -> Contador disminuye
+			if(contador > 0){
+				contador--;
+			}
+			else{
+				contador = 0;
+			}
+		}
+	}
+	// Modo inverso
+	else{
+		if(readData == 1){
+			// Giro en sentido horario -> Contador disminuye
+			if(contador > 0){
+				contador--;
+			}
+			else{
+				contador = 0;
+			}
+		}
+		else{
+			// Giro en sentido anti-horario -> Contador aumenta
+			if(contador < 99){
+				contador++;
+			}
+			else{
+				contador = 99;
+			}
+		}
+	}
+
+} // Fin Función
+
 
 /* Función assert para detectar problemas de paŕametros incorrectos */
 void assert_failed(uint8_t* file, uint32_t line){
