@@ -17,25 +17,30 @@
 /* Definición de los pines a utilizar */
 
 // Pin para el led de estado
-GPIO_Handler_t stateLed = {0}; // PinA5 (led de estado)
+GPIO_Handler_t stateLed = {0}; // Pin PA5 (led de estado)
 
 // Pin para el led que indica el modo seleccionado por el switch
-GPIO_Handler_t modeLed = {0}; // Pin  (led de modo [Directo o Inverso])
+GPIO_Handler_t modeLed = {0}; // Pin PD2  (led de modo [Directo o Inverso])
 
 
 // Pines para el encoder
 GPIO_Handler_t encoderClk = {0}; // Pin8 (Canal 8 del EXTI)
-GPIO_Handler_t data = {0};	// Pin
+GPIO_Handler_t data = {0};	// Pin PB2
 GPIO_Handler_t sw = {0};	// Pin0 (Canal 0 del EXTI)
 
 // Pines para el 7-segmentos
-GPIO_Handler_t segmentoA = {0}; // Pin
-GPIO_Handler_t segmentoB = {0}; // Pin
-GPIO_Handler_t segmentoC = {0}; // Pin
-GPIO_Handler_t segmentoD = {0}; // Pin
-GPIO_Handler_t segmentoE = {0}; // Pin
-GPIO_Handler_t segmentoF = {0}; // Pin
-GPIO_Handler_t segmentoG = {0}; // Pin
+GPIO_Handler_t segmentoA = {0}; // Pin PB4
+GPIO_Handler_t segmentoB = {0}; // Pin PB3
+GPIO_Handler_t segmentoC = {0}; // Pin PC3
+GPIO_Handler_t segmentoD = {0}; // Pin PB0
+GPIO_Handler_t segmentoE = {0}; // Pin PC2
+GPIO_Handler_t segmentoF = {0}; // Pin PB10
+GPIO_Handler_t segmentoG = {0}; // Pin PC0
+
+// Pines para controlar la activación-desactivación de los transistores para alternar
+// entre los cristales del 7-segmentos
+GPIO_Handler_t cristal1 = {0}; // Pin PA4
+GPIO_Handler_t cristal2 = {0}; // Pin PA10
 
 
 
@@ -53,78 +58,54 @@ EXTI_Config_t exti_8 = {0};	// Definimos el EXTI del Encoder (estructura -> "obj
 /* Función principal del programa */
 int main(void)
 {
+
 	/* ===== Configurando los pines que vamos a utilizar ===== */
-	/* Configurando el pin del stateLed */
-	stateLed.pGPIOx								= GPIOA;
-	stateLed.pinConfig.GPIO_PinNumber			= PIN_5;
-	stateLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
-	stateLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-	stateLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-	stateLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
-
-	/* Cargamos la configuración del pin */
-	gpio_Config(&stateLed);
-	gpio_WritePin(&stateLed, SET); // Encendemos el Pin
-
-
-	/* Configuración del pin para el modeLed */
-	modeLed.pGPIOx								= ;
-	modeLed.pinConfig.GPIO_PinNumber			= ;
-	modeLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
-	modeLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-	modeLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-	modeLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
-
-	/* Cargamos la confiugración del pin */
-	gpio_Config(&modeLed);
-	gpio_WritePin(&modeLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
-
 
 	/* Configuraciones de los pines del 7-segmentos */
-	segmentoA.pGPIOx							= ;
-	segmentoA.pinConfig.GPIO_PinNumber			= ;
+	segmentoA.pGPIOx							= GPIOB;
+	segmentoA.pinConfig.GPIO_PinNumber			= PIN_4;
 	segmentoA.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoA.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoA.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoA.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	segmentoB.pGPIOx							= ;
-	segmentoB.pinConfig.GPIO_PinNumber			= ;
+	segmentoB.pGPIOx							= GPIOB;
+	segmentoB.pinConfig.GPIO_PinNumber			= PIN_3;
 	segmentoB.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoB.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoB.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoB.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	segmentoC.pGPIOx							= ;
-	segmentoC.pinConfig.GPIO_PinNumber			= ;
+	segmentoC.pGPIOx							= GPIOC;
+	segmentoC.pinConfig.GPIO_PinNumber			= PIN_3;
 	segmentoC.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoC.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoC.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoC.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	segmentoD.pGPIOx							= ;
-	segmentoD.pinConfig.GPIO_PinNumber			= ;
+	segmentoD.pGPIOx							= GPIOB;
+	segmentoD.pinConfig.GPIO_PinNumber			= PIN_0;
 	segmentoD.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoD.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoD.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoD.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	segmentoE.pGPIOx							= ;
-	segmentoE.pinConfig.GPIO_PinNumber			= ;
+	segmentoE.pGPIOx							= GPIOC;
+	segmentoE.pinConfig.GPIO_PinNumber			= PIN_2;
 	segmentoE.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoE.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoE.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoE.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	segmentoF.pGPIOx							= ;
-	segmentoF.pinConfig.GPIO_PinNumber			= ;
+	segmentoF.pGPIOx							= GPIOB;
+	segmentoF.pinConfig.GPIO_PinNumber			= PIN_10;
 	segmentoF.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoF.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoF.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoF.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	segmentoG.pGPIOx							= ;
-	segmentoG.pinConfig.GPIO_PinNumber			= ;
+	segmentoG.pGPIOx							= GPIOC;
+	segmentoG.pinConfig.GPIO_PinNumber			= PIN_0;
 	segmentoG.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoG.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoG.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
@@ -153,8 +134,8 @@ int main(void)
 	sw.pinConfig.GPIO_PinMode			= GPIO_MODE_IN;
 
 	/* Pin del de la salida de datos del encoder */
-	data.pGPIOx							= ;
-	data.pinConfig.GPIO_PinNumber		= ;
+	data.pGPIOx							= GPIOB;
+	data.pinConfig.GPIO_PinNumber		= PIN_2;
 	data.pinConfig.GPIO_PinMode			= GPIO_MODE_IN;
 
 	/* Se cargan las configuraciones de los respectivos pines */
@@ -188,7 +169,7 @@ int main(void)
 	/* Configurando el TIMER3 para el 7-segmentos */
 	sevenSegmentTimer3.pTIMx								= TIM3;
 	sevenSegmentTimer3.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	sevenSegmentTimer3.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
+	sevenSegmentTimer3.TIMx_Config.TIMx_Period				= 8;		// Encendiendo y apagando el cristal cada 16ms, obtenemos aproximadamente 60 FPS
 	sevenSegmentTimer3.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
 	sevenSegmentTimer3.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
 
@@ -199,6 +180,58 @@ int main(void)
 	/* Encendemos los Timer */
 	timer_SetState(&blinkTimer2, TIMER_ON);
 	timer_SetState(&sevenSegmentTimer3, TIMER_ON);
+
+
+	/* ===== Configuramos de últimos los leds de estado, modo y los pines para conmutar los cristales del 7-segmentos ====== */
+	/* Configurando el pin del stateLed */
+	stateLed.pGPIOx								= GPIOA;
+	stateLed.pinConfig.GPIO_PinNumber			= PIN_5;
+	stateLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	stateLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	stateLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	stateLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+
+	/* Cargamos la configuración del pin */
+	gpio_Config(&stateLed);
+	gpio_WritePin(&stateLed, SET); // Encendemos el Pin
+
+
+	/* Configuración del pin para el modeLed */
+	modeLed.pGPIOx								= ;
+	modeLed.pinConfig.GPIO_PinNumber			= ;
+	modeLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	modeLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	modeLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	modeLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+
+	/* Cargamos la confiugración del pin */
+	gpio_Config(&modeLed);
+	gpio_WritePin(&modeLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
+
+	/* Configurando el pin del cristal1 (7-segmentos) */
+	cristal1.pGPIOx								= GPIOA;
+	cristal1.pinConfig.GPIO_PinNumber			= PIN_4;
+	cristal1.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	cristal1.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	cristal1.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	cristal1.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+
+	/* Cargamos la configuración del pin */
+	gpio_Config(&cristal1);
+	gpio_WritePin(&cristal1, SET); // Encendemos el Pin
+
+	/* Configurando el pin del cristal2 (7-segmentos) */
+	cristal2.pGPIOx								= GPIOA;
+	cristal2.pinConfig.GPIO_PinNumber			= PIN_10;
+	cristal2.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	cristal2.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	cristal2.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	cristal2.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+
+	/* Cargamos la configuración del pin */
+	gpio_Config(&cristal2);
+	gpio_WritePin(&cristal2, RESET); // Apagamos el Pin
+
 
 
 
