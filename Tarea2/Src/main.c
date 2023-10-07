@@ -222,36 +222,39 @@ int main(void)
 	exti_0.pGPIOHandler				= &sw;
 	exti_0.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;	/* Configurando el pin del cristal1 (7-segmentos) */
 
+	/* Cargamos la configuración del EXTI */
+	exti_Config(&exti_0);
+
 	/* Condigurando EXTI8 */
 	exti_8.pGPIOHandler				= &encoderClk;
 	exti_8.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;
 
-	/* Cargamos la configuración de los EXTI */
-	exti_Config(&exti_0);
+	/* Cargamos la configuración del EXTI */
 	exti_Config(&exti_8);
 
 
 	/* ===== Configurando los TIMER ===== */
 	/* Configurando el TIMER2 para el Blinky*/
-	blinkTimer2.pTIMx								= TIM2;
+	blinkTimer2.pTIMx								= TIM3;
 	blinkTimer2.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
 	blinkTimer2.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
 	blinkTimer2.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
 	blinkTimer2.TIMx_Config.TIMx_InterruptEnable	= TIMER_INT_ENABLE;	// Se activa la interrupción
 
 	/* Configurando el TIMER3 para el 7-segmentos */
-	sevenSegmentTimer3.pTIMx								= TIM3;
+	sevenSegmentTimer3.pTIMx								= TIM2;
 	sevenSegmentTimer3.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
 	sevenSegmentTimer3.TIMx_Config.TIMx_Period				= 8;		// Encendiendo y apagando el cristal cada 16ms, obtenemos aproximadamente 60 FPS
 	sevenSegmentTimer3.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
 	sevenSegmentTimer3.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
 
+	/* Cargamos y encendemos los Timer */
 	timer_Config(&blinkTimer2);
-	timer_Config(&sevenSegmentTimer3);
-
-	/* Encendemos los Timer */
 	timer_SetState(&blinkTimer2, TIMER_ON);
+
+	timer_Config(&sevenSegmentTimer3);
 	timer_SetState(&sevenSegmentTimer3, TIMER_ON);
+
 
 
 
@@ -290,7 +293,7 @@ void callback_ExtInt8(void){
 /* Función que atiende la interrupción debida TIMER2, es decir, que controla
  * al blinky (Led de estado)
  * */
-void Timer2_Callback(void){
+void Timer3_Callback(void){
 	gpio_TooglePin(&stateLed);
 }
 
@@ -299,7 +302,7 @@ void Timer2_Callback(void){
  * de los cristales del 7-segmentos a una frecuencia que simule que ambos están
  * encendidos continuamente
  * */
-void Timer3_Callback(void){
+void Timer2_Callback(void){
 	gpio_TooglePin(&cristal1);
 	displayNumber(contador);
 	gpio_TooglePin(&cristal2);
