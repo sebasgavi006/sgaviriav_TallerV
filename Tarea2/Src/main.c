@@ -330,11 +330,11 @@ void numeros(uint8_t numero_x){
 
 	case 1:{
 		gpio_WritePin(&segmentoA, SET);
-		gpio_WritePin(&segmentoB, SET);
-		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
 		gpio_WritePin(&segmentoD, SET);
-		gpio_WritePin(&segmentoE, RESET);
-		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, SET);
 		gpio_WritePin(&segmentoG, SET);
 		break;
 	}
@@ -448,7 +448,7 @@ void displayNumber(uint8_t numero){
 	if( gpio_ReadPin(&cristal1) == 1){
 		numeros(decenas);
 	}
-	else if(gpio_ReadPin(&cristal2) == 1){
+	else{
 		numeros(unidades);
 	}
 
@@ -459,45 +459,38 @@ void displayNumber(uint8_t numero){
 void evaluate(void){
 
 	// Modo directo
-	if(readModeLed == 1){
+	if(readModeLed == 0){
 		if(readData == 1){
 			// Giro en sentido horario -> Contador aumenta
-			if(contador < 99){
-				contador++;
+			if(contador == 99){
+				contador--;
 			}
-			else{
-				contador = 99;
-			}
+			contador++;
 		}
 		else{
 			// Giro en sentido anti-horario -> Contador disminuye
-			if(contador > 0){
-				contador--;
+			if(contador == 0){
+				contador++;
 			}
-			else{
-				contador = 0;
-			}
+			contador --;
 		}
 	}
 	// Modo inverso
 	else{
 		if(readData == 1){
 			// Giro en sentido horario -> Contador disminuye
-			if(contador > 0){
-				contador--;
+			if(contador == 0){
+				contador++;
 			}
-			else{
-				contador = 0;
-			}
+			contador--;
 		}
 		else{
 			// Giro en sentido anti-horario -> Contador aumenta
-			if(contador < 99){
-				contador++;
+			if(contador == 99){
+				contador--;
 			}
-			else{
-				contador = 99;
-			}
+			contador++;
+
 		}
 	}
 
