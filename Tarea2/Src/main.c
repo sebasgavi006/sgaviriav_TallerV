@@ -18,11 +18,12 @@
 /* Definición de una variable contadora global */
 uint8_t contador = 0;
 
-/* Definición de una variable global para guardar el valor de data */
-uint8_t readData = 1;
+/* Definicón de la variable para leer la entrada del Data del Encoder */
 
-/* Definición de una variable para leer la dirección */
-uint8_t readModeLed = 1;
+uint8_t readData = 0;
+
+/* Definición de las banderas de los EXTI */
+uint8_t flagMode = 1;	// Se asigna 1 para indicar que se inicializa en Modo directo
 
 /* Definición de los pines a utilizar */
 
@@ -56,8 +57,8 @@ GPIO_Handler_t cristal2 = {0}; // Pin PA10
 
 /* Definición de los Timers a utilizar para generar las interrupciones
  * del blinky y del 7 segmentos */
-Timer_Handler_t blinkTimer2 = {0};	// Timer 2 para el stateLed
-Timer_Handler_t sevenSegmentTimer3 = {0};	// Timer 3 para el 7-segmentos
+Timer_Handler_t blinkTimer3 = {0};	// Timer 2 para el stateLed
+Timer_Handler_t sevenSegmentTimer2 = {0};	// Timer 3 para el 7-segmentos
 
 
 /* Definición de los EXTI para las interrupciones externas del encoder */
@@ -220,40 +221,40 @@ int main(void)
 	/* ====== Configuramos las interrupciones externas (EXTI) ===== */
 	/* Condigurando EXTI0 */
 	exti_0.pGPIOHandler				= &sw;
-	exti_0.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;	/* Configurando el pin del cristal1 (7-segmentos) */
+	exti_0.edgeType					= EXTERNAL_INTERRUPT_RISING_EDGE;	/* Configurando el pin del cristal1 (7-segmentos) */
 
 	/* Cargamos la configuración del EXTI */
 	exti_Config(&exti_0);
 
 	/* Condigurando EXTI8 */
 	exti_8.pGPIOHandler				= &encoderClk;
-	exti_8.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;
+	exti_8.edgeType					= EXTERNAL_INTERRUPT_RISING_EDGE;
 
 	/* Cargamos la configuración del EXTI */
 	exti_Config(&exti_8);
 
 
 	/* ===== Configurando los TIMER ===== */
-	/* Configurando el TIMER2 para el Blinky*/
-	blinkTimer2.pTIMx								= TIM2;
-	blinkTimer2.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	blinkTimer2.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
-	blinkTimer2.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
-	blinkTimer2.TIMx_Config.TIMx_InterruptEnable	= TIMER_INT_ENABLE;	// Se activa la interrupción
+	/* Configurando el TIMER3 para el Blinky (Timer de 16 bits)*/
+	blinkTimer3.pTIMx								= TIM3;
+	blinkTimer3.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
+	blinkTimer3.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
+	blinkTimer3.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
+	blinkTimer3.TIMx_Config.TIMx_InterruptEnable	= TIMER_INT_ENABLE;	// Se activa la interrupción
 
-	/* Configurando el TIMER3 para el 7-segmentos */
-	sevenSegmentTimer3.pTIMx								= TIM3;
-	sevenSegmentTimer3.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	sevenSegmentTimer3.TIMx_Config.TIMx_Period				= 8;		// Encendiendo y apagando el cristal cada 16ms, obtenemos aproximadamente 60 FPS
-	sevenSegmentTimer3.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
-	sevenSegmentTimer3.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
+	/* Configurando el TIMER2 para el 7-segmentos (Timer de 32 bits) */
+	sevenSegmentTimer2.pTIMx								= TIM2;
+	sevenSegmentTimer2.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
+	sevenSegmentTimer2.TIMx_Config.TIMx_Period				= 8;		// Encendiendo y apagando el cristal cada 16ms, obtenemos aproximadamente 60 FPS
+	sevenSegmentTimer2.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
+	sevenSegmentTimer2.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
 
 	/* Cargamos y encendemos los Timer */
-	timer_Config(&blinkTimer2);
-	timer_SetState(&blinkTimer2, TIMER_ON);
+	timer_Config(&blinkTimer3);
+	timer_SetState(&blinkTimer3, TIMER_ON);
 
-	timer_Config(&sevenSegmentTimer3);
-	timer_SetState(&sevenSegmentTimer3, TIMER_ON);
+	timer_Config(&sevenSegmentTimer2);
+	timer_SetState(&sevenSegmentTimer2, TIMER_ON);
 
 
 
@@ -275,7 +276,9 @@ int main(void)
  * externa debida al switch
  * */
 void callback_ExtInt0(void){
+	flagMode ^= 1;	// Aplicamos un XOR a la bandera para que cambie de valor binario
 	gpio_TooglePin(&modeLed);
+
 }
 
 
@@ -284,7 +287,6 @@ void callback_ExtInt0(void){
  * */
 void callback_ExtInt8(void){
 	readData = gpio_ReadPin(&data);
-	readModeLed = gpio_ReadPin(&modeLed);
 	evaluate();
 
 }
@@ -293,7 +295,7 @@ void callback_ExtInt8(void){
 /* Función que atiende la interrupción debida TIMER2, es decir, que controla
  * al blinky (Led de estado)
  * */
-void Timer2_Callback(void){
+void Timer3_Callback(void){
 	gpio_TooglePin(&stateLed);
 }
 
@@ -302,7 +304,7 @@ void Timer2_Callback(void){
  * de los cristales del 7-segmentos a una frecuencia que simule que ambos están
  * encendidos continuamente
  * */
-void Timer3_Callback(void){
+void Timer2_Callback(void){
 	gpio_TooglePin(&cristal1);
 	displayNumber(contador);
 	gpio_TooglePin(&cristal2);
@@ -459,7 +461,7 @@ void displayNumber(uint8_t numero){
 void evaluate(void){
 
 	// Modo directo
-	if(readModeLed == 0){
+	if(flagMode == 1){
 		if(readData == 1){
 			// Giro en sentido horario -> Contador aumenta
 			if(contador == 99){
