@@ -59,9 +59,12 @@ int main(void)
 /*
  * Overwiter function
  */
+
+
 void Timer2_Callback(void){
 	gpio_TooglePin(&stateLed);
 }
+
 
 /* Función assert para detectar problemas de paŕametros incorrectos */
 void assert_failed(uint8_t* file, uint32_t line){
