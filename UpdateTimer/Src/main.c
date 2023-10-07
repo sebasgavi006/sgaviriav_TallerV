@@ -35,9 +35,9 @@ int main(void)
 	gpio_WritePin(&stateLed, SET);
 
 	/* Configurando el Timer */
-	blinkTimer.pTIMx								= TIM2;
+	blinkTimer.pTIMx								= TIM4;
 	blinkTimer.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	blinkTimer.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
+	blinkTimer.TIMx_Config.TIMx_Period				= 100;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
 	blinkTimer.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuante ascendente
 	blinkTimer.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
 
@@ -61,7 +61,7 @@ int main(void)
  */
 
 
-void Timer2_Callback(void){
+void Timer4_Callback(void){
 	gpio_TooglePin(&stateLed);
 }
 
