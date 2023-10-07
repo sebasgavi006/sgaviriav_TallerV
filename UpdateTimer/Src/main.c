@@ -13,7 +13,7 @@
 #include "timer_driver_hal.h"
 
 // Se define un pin de prueba
-GPIO_Handler_t userLed = {0}; // PinA5
+GPIO_Handler_t stateLed = {0}; // PinA5
 
 Timer_Handler_t blinkTimer = {0};
 
@@ -23,16 +23,16 @@ int main(void)
 {
 
 	/* Configurando el pin */
-	userLed.pGPIOx								= GPIOA;
-	userLed.pinConfig.GPIO_PinNumber			= PIN_5;
-	userLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
-	userLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-	userLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-	userLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+	stateLed.pGPIOx								= GPIOA;
+	stateLed.pinConfig.GPIO_PinNumber			= PIN_5;
+	stateLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	stateLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	stateLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	stateLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
 	/* Cargamos la configuración del pin */
-	gpio_Config(&userLed);
-	gpio_WritePin(&userLed, SET);
+	gpio_Config(&stateLed);
+	gpio_WritePin(&stateLed, SET);
 
 	/* Configurando el Timer */
 	blinkTimer.pTIMx								= TIM2;
@@ -60,7 +60,7 @@ int main(void)
  * Overwiter function
  */
 void Timer2_Callback(void){
-	gpio_TooglePin(&userLed);
+	gpio_TooglePin(&stateLed);
 }
 
 /* Función assert para detectar problemas de paŕametros incorrectos */

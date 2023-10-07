@@ -30,17 +30,17 @@ uint8_t readModeLed = 1;
 GPIO_Handler_t stateLed = {0}; // Pin PA5 (led de estado)
 
 // Pin para el led que indica el modo seleccionado por el switch
-GPIO_Handler_t modeLed = {0}; // Pin PD2  (led de modo [Directo o Inverso])
+GPIO_Handler_t modeLed = {0}; // Pin PA7  (led de modo [Directo o Inverso])
 
 
 // Pines para el encoder
-GPIO_Handler_t encoderClk = {0}; // Pin PB8 (Canal 8 del EXTI)
+GPIO_Handler_t encoderClk = {0}; // Pin PC8 (Canal 8 del EXTI)
 GPIO_Handler_t data = {0};	// Pin PB2
 GPIO_Handler_t sw = {0};	// Pin PA0 (Canal 0 del EXTI)
 
 // Pines para el 7-segmentos
-GPIO_Handler_t segmentoA = {0}; // Pin PB4
-GPIO_Handler_t segmentoB = {0}; // Pin PB3
+GPIO_Handler_t segmentoA = {0}; // Pin PB5
+GPIO_Handler_t segmentoB = {0}; // Pin PC4
 GPIO_Handler_t segmentoC = {0}; // Pin PC3
 GPIO_Handler_t segmentoD = {0}; // Pin PB0
 GPIO_Handler_t segmentoE = {0}; // Pin PC2
@@ -76,12 +76,6 @@ void numeros(uint8_t numero_x);
 // Función para evaluar si se aumenta o disminuye el contador
 void evaluate(void);
 
-// Función para contar ascedente
-void upCounter(void);
-
-// Función para contar descendente
-void downCounter(void);
-
 
 /* Función principal del programa */
 int main(void)
@@ -91,14 +85,14 @@ int main(void)
 
 	/* Configuraciones de los pines del 7-segmentos */
 	segmentoA.pGPIOx							= GPIOB;
-	segmentoA.pinConfig.GPIO_PinNumber			= PIN_4;
+	segmentoA.pinConfig.GPIO_PinNumber			= PIN_5;
 	segmentoA.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoA.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoA.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoA.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-	segmentoB.pGPIOx							= GPIOB;
-	segmentoB.pinConfig.GPIO_PinNumber			= PIN_3;
+	segmentoB.pGPIOx							= GPIOC;
+	segmentoB.pinConfig.GPIO_PinNumber			= PIN_4;
 	segmentoB.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoB.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoB.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
@@ -152,7 +146,7 @@ int main(void)
 	/* Configuramos los pines del encoder */
 
 	/* Pin del Encoder Clock */
-	encoderClk.pGPIOx							= GPIOB;
+	encoderClk.pGPIOx							= GPIOC;
 	encoderClk.pinConfig.GPIO_PinNumber			= PIN_8;
 	encoderClk.pinConfig.GPIO_PinMode			= GPIO_MODE_IN;
 
@@ -171,46 +165,20 @@ int main(void)
 	gpio_Config(&sw);
 	gpio_Config(&data);
 
-
-	/* ====== Configuramos las interrupciones externas (EXTI) ===== */
-	/* Condigurando EXTI0 */
-	exti_0.pGPIOHandler				= &sw;
-	exti_0.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;
-
-	/* Condigurando EXTI8 */
-	exti_8.pGPIOHandler				= &encoderClk;
-	exti_8.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;
-
-	/* Cargamos la configuración de los EXTI */
-	exti_Config(&exti_0);
-	exti_Config(&exti_0);
-
-
-	/* ===== Configurando los TIMER ===== */
-	/* Configurando el TIMER2 para el Blinky*/
-	blinkTimer2.pTIMx								= TIM2;
-	blinkTimer2.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	blinkTimer2.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
-	blinkTimer2.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
-	blinkTimer2.TIMx_Config.TIMx_InterruptEnable	= TIMER_INT_ENABLE;	// Se activa la interrupción
-
-	/* Configurando el TIMER3 para el 7-segmentos */
-	sevenSegmentTimer3.pTIMx								= TIM3;
-	sevenSegmentTimer3.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	sevenSegmentTimer3.TIMx_Config.TIMx_Period				= 8;		// Encendiendo y apagando el cristal cada 16ms, obtenemos aproximadamente 60 FPS
-	sevenSegmentTimer3.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
-	sevenSegmentTimer3.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
-
-	/* Cargamos la configuración del Timer */
-	timer_Config(&blinkTimer2);
-	timer_Config(&sevenSegmentTimer3);
-
-	/* Encendemos los Timer */
-	timer_SetState(&blinkTimer2, TIMER_ON);
-	timer_SetState(&sevenSegmentTimer3, TIMER_ON);
-
-
 	/* ===== Configuramos de últimos los leds de estado, modo y los pines para conmutar los cristales del 7-segmentos ====== */
+
+	/* Configuración del pin para el modeLed */
+	modeLed.pGPIOx								= GPIOA;
+	modeLed.pinConfig.GPIO_PinNumber			= PIN_7;
+	modeLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	modeLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	modeLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	modeLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+
+	/* Cargamos la confiugración del pin */
+	gpio_Config(&modeLed);
+	gpio_WritePin(&modeLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
+
 	/* Configurando el pin del stateLed */
 	stateLed.pGPIOx								= GPIOA;
 	stateLed.pinConfig.GPIO_PinNumber			= PIN_5;
@@ -221,20 +189,8 @@ int main(void)
 
 	/* Cargamos la configuración del pin */
 	gpio_Config(&stateLed);
-	gpio_WritePin(&stateLed, SET); // Encendemos el Pin
+	gpio_WritePin(&stateLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
 
-
-	/* Configuración del pin para el modeLed */
-	modeLed.pGPIOx								= GPIOD;
-	modeLed.pinConfig.GPIO_PinNumber			= PIN_2;
-	modeLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
-	modeLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-	modeLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-	modeLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
-
-	/* Cargamos la confiugración del pin */
-	gpio_Config(&modeLed);
-	gpio_WritePin(&modeLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
 
 	/* Configurando el pin del cristal1 (7-segmentos) */
 	cristal1.pGPIOx								= GPIOA;
@@ -260,6 +216,42 @@ int main(void)
 	gpio_Config(&cristal2);
 	gpio_WritePin(&cristal2, RESET); // Apagamos el Pin
 
+
+	/* ====== Configuramos las interrupciones externas (EXTI) ===== */
+	/* Condigurando EXTI0 */
+	exti_0.pGPIOHandler				= &sw;
+	exti_0.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;	/* Configurando el pin del cristal1 (7-segmentos) */
+
+	/* Condigurando EXTI8 */
+	exti_8.pGPIOHandler				= &encoderClk;
+	exti_8.edgeType					= EXTERNAL_INTERRUPT_FALLING_EDGE;
+
+	/* Cargamos la configuración de los EXTI */
+	exti_Config(&exti_0);
+	exti_Config(&exti_8);
+
+
+	/* ===== Configurando los TIMER ===== */
+	/* Configurando el TIMER2 para el Blinky*/
+	blinkTimer2.pTIMx								= TIM2;
+	blinkTimer2.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
+	blinkTimer2.TIMx_Config.TIMx_Period				= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
+	blinkTimer2.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
+	blinkTimer2.TIMx_Config.TIMx_InterruptEnable	= TIMER_INT_ENABLE;	// Se activa la interrupción
+
+	/* Configurando el TIMER3 para el 7-segmentos */
+	sevenSegmentTimer3.pTIMx								= TIM3;
+	sevenSegmentTimer3.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
+	sevenSegmentTimer3.TIMx_Config.TIMx_Period				= 8;		// Encendiendo y apagando el cristal cada 16ms, obtenemos aproximadamente 60 FPS
+	sevenSegmentTimer3.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
+	sevenSegmentTimer3.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
+
+	timer_Config(&blinkTimer2);
+	timer_Config(&sevenSegmentTimer3);
+
+	/* Encendemos los Timer */
+	timer_SetState(&blinkTimer2, TIMER_ON);
+	timer_SetState(&sevenSegmentTimer3, TIMER_ON);
 
 
 
@@ -311,10 +303,6 @@ void Timer3_Callback(void){
 	gpio_TooglePin(&cristal1);
 	displayNumber(contador);
 	gpio_TooglePin(&cristal2);
-
-
-
-
 }
 
 

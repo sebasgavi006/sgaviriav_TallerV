@@ -27,7 +27,7 @@ static void gpio_config_alternate_function(GPIO_Handler_t *pGPIOHandler);
  * periférico o activar la señal de reloj del periférico".
  */
 
-void gpio_Config (GPIO_Handler_t *pGPIOHandler){	// Función pública
+void gpio_Config(GPIO_Handler_t *pGPIOHandler){	// Función pública
 
 	/* Verificamos que el pin seleccionado es correcto */
 	assert_param(IS_GPIO_PIN(pGPIOHandler->pinConfig.GPIO_PinNumber));

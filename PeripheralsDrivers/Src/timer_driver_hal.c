@@ -234,6 +234,19 @@ void timer_Config(Timer_Handler_t *pTimerHandler){	// Llamamos la función públ
 	 __NOP();
  }
 
+ __attribute__((weak)) void Timer3_Callback(void){		// El atributo (weak) permite sobreescribir la función Callback
+	 __NOP();
+ }
+
+ __attribute__((weak)) void Timer4_Callback(void){		// El atributo (weak) permite sobreescribir la función Callback
+	 __NOP();
+ }
+
+ __attribute__((weak)) void Timer5_Callback(void){		// El atributo (weak) permite sobreescribir la función Callback
+	 __NOP();
+ }
+
+
  /* Esta es la función a la que apunta el sistema en el vector de interrupciones.
   * Se debe utilizar usando exactamente el mismo nombre definido en el vector de
   * interrupciones.
@@ -248,3 +261,29 @@ void timer_Config(Timer_Handler_t *pTimerHandler){	// Llamamos la función públ
 	 /* Llamamos a la función que se debe encargar de hacer algo con esta interrupción */
 	 Timer2_Callback();
  }
+
+ void TIM3_IRQHandler(void){
+	 /* Limpiamos la bandera que indica que la interrupción se ha generado */
+	 TIM3->SR &= ~TIM_SR_UIF;
+
+	 /* Llamamos a la función que se debe encargar de hacer algo con esta interrupción */
+	 Timer3_Callback();
+ }
+
+ void TIM4_IRQHandler(void){
+	 /* Limpiamos la bandera que indica que la interrupción se ha generado */
+	 TIM4->SR &= ~TIM_SR_UIF;
+
+	 /* Llamamos a la función que se debe encargar de hacer algo con esta interrupción */
+	 Timer4_Callback();
+ }
+
+ void TIM5_IRQHandler(void){
+	 /* Limpiamos la bandera que indica que la interrupción se ha generado */
+	 TIM5->SR &= ~TIM_SR_UIF;
+
+	 /* Llamamos a la función que se debe encargar de hacer algo con esta interrupción */
+	 Timer5_Callback();
+ }
+
+
