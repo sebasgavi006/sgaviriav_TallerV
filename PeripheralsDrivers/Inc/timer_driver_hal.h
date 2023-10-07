@@ -68,5 +68,10 @@ void Timer4_Callback(void);
 
 void Timer5_Callback(void);
 
+void Timer9_Callback(void);
+
+void Timer10_Callback(void);
+
+void Timer11_Callback(void);
 
 #endif /* TIMER_DRIVER_HAL_H_ */
