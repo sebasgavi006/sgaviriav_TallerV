@@ -190,7 +190,7 @@ static void usart_config_stopbits(USART_Handler_t *ptrUsartHandler){
 }
 
 /**
- * Ver tabla de valores (Tabla 73), Frec = 16MHz, overr = 0;
+ * Ver tabla de valores (Tabla 75), Frec = 16MHz, overr = 0;
  */
 static void usart_config_baudrate(USART_Handler_t *ptrUsartHandler){
 	// Caso para configurar cuando se trabaja con el Cristal Interno
@@ -198,27 +198,37 @@ static void usart_config_baudrate(USART_Handler_t *ptrUsartHandler){
 		case USART_BAUDRATE_9600:
 		{
 		// El valor a cargar es 104.1875 -> Mantiza = 104,fraction = 0.1875
-		// Mantiza = 104 = 0x68, fraction = 16 * 0.1875 = 3
+		// Mantiza = 104 = 0x0680, fraction = 16 * 0.1875 = 3 = 0x0003
 		// Valor a cargar 0x0683
 		// Configurando el Baudrate generator para una velocidad de 9600bps
-		ptrUsartHandler->ptrUSARTx->BRR = 0x0683;
+			ptrUsartHandler->ptrUSARTx->BRR = 0x0683;
+			break;
 		}
 		case USART_BAUDRATE_19200:
 		{
 		// El valor a cargar es 52.0625 -> Mantiza = 52,fraction = 0.0625
-		// Mantiza = 52 = 0x34, fraction = 16 * 0.1875 = 1
-		// Escriba acá su código y los comentarios que faltan
+		// Mantiza = 52 => 0x0340, fraction = 16 * 0.0625 = 1 => 0x0001
+		// Valor a cargar 0x0341
+		// Configurando el Baudrate generator para una velocidad de 19200bps
+			ptrUsartHandler->ptrUSARTx->BRR = 0x0341;
 			break;
 		}
 		case USART_BAUDRATE_115200:
 		{
-        // Escriba acá su código y los comentarios que faltan
+		// El valor a cargar es 8.6875 -> Mantiza = 8,fraction = 0.6875
+		// Mantiza = 8 => 0x0080 , fraction = 16 * 0.6875 = 11 => 0x000B
+		// Valor a cargar 0x008B
+		// Configurando el Baudrate generator para una velocidad de 115200bps
+			ptrUsartHandler->ptrUSARTx->BRR = 0x008B;
 			break;
 		}
 		case USART_BAUDRATE_230400:
 		{
-			// Configurando el Baudrate generator para una velocidad de 230400bps
-			// Escriba acá su código y los comentarios que faltan
+		// El valor a cargar es 4.3125 -> Mantiza = 4,fraction = 0.3125
+		// Mantiza = 4 => 0x0040, fraction = 16 * 0.3125 = 5 => 0x0005
+		// Valor a cargar 0x0045
+		// Configurando el Baudrate generator para una velocidad de 230400bps
+			ptrUsartHandler->ptrUSARTx->BRR = 0x0045;
 			break;
 		}
 
