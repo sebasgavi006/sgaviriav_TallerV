@@ -143,18 +143,18 @@ static void usart_config_datasize(USART_Handler_t *ptrUsartHandler){
 		// Verificamos si se esta trabajando o no con paridad
 		if(ptrUsartHandler->USART_Config.parity == USART_PARITY_NONE){
 			// Deseamos trabajar con datos de 8 bits
-			// Escriba acá su código
+			ptrUsartHandler->ptrUSARTx->CR1 &= ~(USART_CR1_M);
 		}
 		else{
 			// Si la paridad esta activa, debemos incluir un bit adicional
-			// Escriba acá su código
+			ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_M;
 		}
 
 	}else{
 		// Deseamos trabajar con datos de 9 bits
-		// Escriba acá su códigoM;
+		ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_M;
 	}
-}
+}	// Fin Config Datasize
 
 /**
  *
