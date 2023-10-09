@@ -157,33 +157,33 @@ static void usart_config_datasize(USART_Handler_t *ptrUsartHandler){
 }	// Fin Config Datasize
 
 /**
- *
+ * Configuración para seleccionar cuántos bits de parada vamos a utilizar
  */
 static void usart_config_stopbits(USART_Handler_t *ptrUsartHandler){
 	switch(ptrUsartHandler->USART_Config.stopbits){
 	case USART_STOPBIT_1: {
-		// Debemoscargar el valor 0b00 en los dos bits de STOP
-		// Escriba acá su código
+		// Debemos cargar el valor 0b00 en los dos bits de STOP
+		ptrUsartHandler->ptrUSARTx->CR2 &= ~USART_CR2_STOP;
 		break;
 	}
 	case USART_STOPBIT_0_5: {
-		// Debemoscargar el valor 0b01 en los dos bits de STOP
-		// Escriba acá su código
+		// Debemos cargar el valor 0b01 en los dos bits de STOP
+		ptrUsartHandler->ptrUSARTx->CR2 |= USART_CR2_STOP_0;
 		break;
 	}
 	case USART_STOPBIT_2: {
-		// Debemoscargar el valor 0b10 en los dos bits de STOP
-		// Escriba acá su código
+		// Debemos cargar el valor 0b10 en los dos bits de STOP
+		ptrUsartHandler->ptrUSARTx->CR2 |= USART_CR2_STOP_1;
 		break;
 	}
 	case USART_STOPBIT_1_5: {
-		// Debemoscargar el valor 0b11 en los dos bits de STOP
-		// Escriba acá su código
+		// Debemos cargar el valor 0b11 en los dos bits de STOP
+		ptrUsartHandler->ptrUSARTx->CR2 |= USART_CR2_STOP;
 		break;
 	}
 	default: {
 		// En el casopor defecto seleccionamos 1 bit de parada
-		// Escriba acá su código
+		ptrUsartHandler->ptrUSARTx->CR2 &= ~USART_CR2_STOP;
 		break;
 	}
 	}
