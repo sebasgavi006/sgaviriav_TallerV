@@ -97,7 +97,10 @@ static void usart_enable_clock_peripheral(USART_Handler_t *ptrUsartHandler){
 	else if(ptrUsartHandler->ptrUSARTx == USART6){
 		RCC->APB2ENR |= RCC_APB2ENR_USART6EN;
 	}
-}
+	else{
+		__NOP();
+	}
+}	// Fin del Enable Clock Peripheral
 
 /**
  *
@@ -107,20 +110,26 @@ static void usart_config_parity(USART_Handler_t *ptrUsartHandler){
     // Tenga cuidado, el parity hace parte del tamaño de los datos...
 	if(ptrUsartHandler->USART_Config.parity != USART_PARITY_NONE){
 
+		// Encendemos la verificación de paridad (Parity Control)
+		ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_PCE;
+
 		// Verificamos si se ha seleccionado ODD or EVEN
 		if(ptrUsartHandler->USART_Config.parity == USART_PARITY_EVEN){
-			// Es even, entonces cargamos la configuracion adecuada
-			// Escriba acá su código
+			// Es even, entonces cargamos la configuracion adecuada (Paridad par)
+			ptrUsartHandler->ptrUSARTx->CR1 &= ~(USART_CR1_PS);
 			
 		}else{
-			// Si es "else" significa que la paridad seleccionada es ODD, y cargamos esta configuracion
-			// Escriba acá su código
+			// Si es "else" significa que la paridad seleccionada es ODD,
+			// y cargamos esta configuracion (Paridad Impar)
+			ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_PS;
+
 		}
 	}else{
 		// Si llegamos aca, es porque no deseamos tener el parity-check
-		// Escriba acá su código
+		// Desactivamos la verificación de paridad
+		ptrUsartHandler->ptrUSARTx->CR1 &= ~(USART_CR1_PCE);
 	}
-}
+}	// Fin del Config Parity
 
 /**
  * Esta funcion debe estar relacionada con el parity.
