@@ -2,7 +2,16 @@
  ******************************************************************************
  * @file           : main.c
  * @author         : Sebastian Gaviria Valencia
- * @brief          :
+ * @brief          : El actual proyecto consiste de dos display 7-segmentos, que en conjunto
+ * 					 permiten mostrar numeros del 00 al 99. Para el control de los números tenemos
+ * 					 un encoder, que se encarga de aumentar o disminuir dicha cuenta mostradad en
+ * 					 el display. También a través del botón integrado en el Encoder nos permite
+ * 					 acceder a dos modos diferentes: al estar un led verde encedido se encuentra
+ * 					 en Modo directo, donde el contador aumenta al girar en sentido horario y disminuye
+ * 					 en sentido antihorario. Cuando el led verde este apagado indica el Modo inverso,
+ * 					 donde al girar en sentido horario el contador disminuye, y al girar en sentido
+ * 					 antihorario el contador aumenta.
+ *
  ******************************************************************************
  **/
 
