@@ -83,6 +83,19 @@ void timer_Config(Timer_Handler_t *pTimerHandler){	// Llamamos la función públ
 	 // Verificamos que es un Timer permitido
 	 assert_param(IS_TIME_INSTANCE(pTimerHandler->pTIMx));
 
+	 /* ===== NOTA IMPORTANTE =====
+	  * Los TIMERS tienen diferentes tamaño:
+	  *
+	  * ===== TIMERS 16 BITS =====
+	  * TIM3
+	  * TIM4
+	  * TIM9
+	  * TIM10
+	  * TIM11
+	  *
+	  * ===== TIMERS 32 BITS =====
+	  * TIM2 - TIM5
+	  * */
 	 if(pTimerHandler->pTIMx == TIM2){
 		 RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
 	 }
