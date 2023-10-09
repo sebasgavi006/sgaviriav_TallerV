@@ -43,8 +43,8 @@ enum{
 
 enum{
 	USART_PARITY_NONE = 0,
-	USART_PARITY_ODD,
-	USART_PARITY_EVEN
+	USART_PARITY_ODD,	// Paridad Impar
+	USART_PARITY_EVEN	// Paridad Par
 };
 
 enum{

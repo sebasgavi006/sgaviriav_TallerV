@@ -247,6 +247,7 @@ static void usart_config_mode(USART_Handler_t *ptrUsartHandler){
 		ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_UE;
 		break;
 	}
+	}
 }
 
 
@@ -293,7 +294,7 @@ static void usart_enable_peripheral(USART_Handler_t *ptrUsartHandler){
 /*
  * función para escribir un solo char
  */
-int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend ){
+int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
 	while( !(ptrUsartHandler->ptrUSARTx->SR & USART_SR_TXE)){
 		__NOP();
 	}
@@ -339,24 +340,23 @@ void USART1_IRQHandler(void){
 }
 
 
-__attribute__((weak)) void usart1_RxCallback(void){
+__attribute__ ((weak)) void usart1_RxCallback(void){
 	  /* NOTE : This function should not be modified, when the callback is needed,
 	            the BasicTimer_Callback could be implemented in the main file
 	   */
 	__NOP();
 }
 
-__attribute__((weak)) void usart2_RxCallback(void){
+__attribute__ ((weak)) void usart2_RxCallback(void){
 	  /* NOTE : This function should not be modified, when the callback is needed,
 	            the BasicTimer_Callback could be implemented in the main file
 	   */
 	__NOP();
 }
 
-__attribute__((weak)) void usart6_RxCallback(void){
+__attribute__ ((weak)) void usart6_RxCallback(void){
 	  /* NOTE : This function should not be modified, when the callback is needed,
 	            the BasicTimer_Callback could be implemented in the main file
 	   */
 	__NOP();
 }
-
