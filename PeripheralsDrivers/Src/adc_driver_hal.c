@@ -39,7 +39,7 @@ void adc_ConfigSingleChannel(ADC_Config_t *adcConfig){
 
 	// Limpiamos los registros antes de comenzar a configurar
 	ADC1->CR1 = 0;
-	ADC2->CR2 = 0;
+	ADC1->CR2 = 0;
 
 	/* Comenzamos la configuración de ADC1 */
 
@@ -130,7 +130,116 @@ static void adc_set_resolution(ADC_Config_t *adcConfig){
 }	// Fin del configuración de resolución
 
 
+/*
+ * Configuración para el alineamiento (left or right
+ */
+static void adc_set_alignment(ADC_Config_t *adcConfig){
+
+}
+
+
+/*
+ * Relacionando con el valor del tiempo de carga del capacitor HOLD
+ */
+static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
+
+}
+
+
+/*
+ * Configura el número de elementos en la secuencia (un solo elemento en este caso)
+ * Configura también cuál es el canal que adquiere la señal ADC
+ */
+static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig){
+
+}
+
+
+/*
+ * Configura el enable de las interrupciones y la activación del NVIC
+ */
+static void adc_config_interrupt(ADC_Config_t *adcConfig){
+
+}
+
+
+/*
+ * Controla la activación y desactivación del módulo ADC desde el
+ * registro CR2 del ADC
+ */
+void adc_peripheralOnOFF(uint8_t state){
+
+}
+
+
+/*
+ * Aquí activamos o desactivamos el Scan Mode.
+ * Funciona de la mano con la secuencia de varios canales.
+ * No es necesario para el caso de un canal simple
+ */
+void adc_ScanMode(uint8_t state){
+
+}
+
+
+/*
+ * Función que inicia la conversión ADC simple
+ */
+void adc_StartSingleConv(void){
+
+}
+
+
+/*
+ * Función de inicia la conversión ADC continua
+ */
+void adc_StartContinuousConv(void){
+
+}
+
+
+/*
+ * Función que detiene la conversión ADC continua
+ */
+void adc_StopContinuousConv(void){
+
+}
+
+
+/*
+ * Función que retorna el último dato adquirido por el ADC
+ */
+uint16_t adc_GetValue(void){
+	return adcRawData;
+}
+
+
+/*
+ * Esta es la ISR de la interrupción por conversión ADC
+ */
+void ADC_IRQHandler(void){
+	__attribute__((weak)) void adc_CompleteCallback(void){
+		__NOP();
+	}
+}
+
+
+/*
+ * Esta función configura los pines que deseamos que funcionen con ADC
+ */
+void adc_ConfigAnalogPin(uint8_t adcChannel){
+
+}
+
+
+/*
+ * Configuramos para hacer conversiones en múltiples canales
+ * y con un orden específico (secuencia)
+ */
 
 
 
+/*
+ * Configuramos para Trigger externo
+ */
 
