@@ -135,7 +135,18 @@ static void adc_set_resolution(ADC_Config_t *adcConfig){
  */
 static void adc_set_alignment(ADC_Config_t *adcConfig){
 
-}
+	/* Leemos la configuración cargada para el alineamiento */
+	if(adcConfig->dataAlignment == ALIGNMENT_LEFT){
+		ADC1->CR2 |= ADC_CR2_ALIGN;
+	}
+	else if(adcConfig->dataAlignment == ALIGNMENT_RIGHT){
+		ADC1->CR2 &= ~ADC_CR2_ALIGN;
+	}
+	else{
+		__NOP();
+	}
+
+}	// Fin de la configuración del alineamiento
 
 
 /*
