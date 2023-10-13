@@ -160,6 +160,11 @@ static void usart_config_datasize(USART_Handler_t *ptrUsartHandler){
  * Configuración para seleccionar cuántos bits de parada vamos a utilizar
  */
 static void usart_config_stopbits(USART_Handler_t *ptrUsartHandler){
+
+	/* Limpiamos el registro CR2->STOP */
+	ptrUsartHandler->ptrUSARTx->CR2 &= ~USART_CR2_STOP;
+
+	/* Configuramos los bits de parada para el USARTx */
 	switch(ptrUsartHandler->USART_Config.stopbits){
 	case USART_STOPBIT_1: {
 		// Debemos cargar el valor 0b00 en los dos bits de STOP
@@ -182,7 +187,7 @@ static void usart_config_stopbits(USART_Handler_t *ptrUsartHandler){
 		break;
 	}
 	default: {
-		// En el casopor defecto seleccionamos 1 bit de parada
+		// En el caso por defecto seleccionamos 1 bit de parada
 		ptrUsartHandler->ptrUSARTx->CR2 &= ~USART_CR2_STOP;
 		break;
 	}
@@ -191,6 +196,11 @@ static void usart_config_stopbits(USART_Handler_t *ptrUsartHandler){
 
 /**
  * Ver tabla de valores (Tabla 75), Frec = 16MHz, overr = 0;
+ *
+ * Aquí configuramos el baudrate del USART.
+ * El baudrate es la tasa de bits/s de transmisión y recepción entre los
+ * dispositivos que se comunican a través del USART (Particularmente a una
+ * señal de reloj del microcontrolador)
  */
 static void usart_config_baudrate(USART_Handler_t *ptrUsartHandler){
 	// Caso para configurar cuando se trabaja con el Cristal Interno
