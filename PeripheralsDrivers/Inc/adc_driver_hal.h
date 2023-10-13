@@ -38,8 +38,8 @@ enum{
 };
 
 enum{
-	ALIGMENT_RIGHT = 0,
-	ALIGMENT_LEFT
+	ALIGNMENT_RIGHT = 0,
+	ALIGNMENT_LEFT
 };
 
 enum{
@@ -89,10 +89,10 @@ typedef struct{
 	uint8_t		channel;			// Canal ADC que será utilizado para la conversión ADC
 	uint8_t		resolution;			// Precisión con la que el ADC hace la adquisición del dato
 	uint16_t	samplingPeriod;		// Tiempo deseado para hacer la adquisición del dato
-	uint8_t		dataAligment;		// Alineación a la izquierda
+	uint8_t		dataAlignment;		// Alineación a la izquierda
 	uint16_t	adcData;			// Dato de la conversión (valor binario)
 	uint8_t		interrupState;		// Para configurar si se desea o no trabajar con la interrupción
-} ADC_Config_t;
+}ADC_Config_t;
 
 
 /* Header definitions for the public functions of adc_driver_hal */
