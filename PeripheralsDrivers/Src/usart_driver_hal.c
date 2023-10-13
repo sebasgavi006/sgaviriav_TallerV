@@ -240,7 +240,10 @@ static void usart_config_baudrate(USART_Handler_t *ptrUsartHandler){
 }
 
 /**
- *
+ * Aquí configuramos el modo de funcionamiento del USART:
+ * - TX para enviar (Transmitter)
+ * - RX para recibir (Receiver)
+ * - TXRX para transmitir y recibir *
  */
 static void usart_config_mode(USART_Handler_t *ptrUsartHandler){
 	switch(ptrUsartHandler->USART_Config.mode){
@@ -274,7 +277,8 @@ static void usart_config_mode(USART_Handler_t *ptrUsartHandler){
 
 
 /**
- *
+ * Esta función configura las interrupciones debidas a la recepción de datos
+ * cuando el USART está configurado en modo de recepción (RX)
  */
 static void usart_config_interrupt(USART_Handler_t *ptrUsartHandler){
 	// 2.8a Interrupción por recepción
@@ -305,7 +309,7 @@ static void usart_config_interrupt(USART_Handler_t *ptrUsartHandler){
 
 
 /**
- *
+ * Configuración para activar o desactivar el USART
  */
 static void usart_enable_peripheral(USART_Handler_t *ptrUsartHandler){
 	if(ptrUsartHandler->USART_Config.mode != USART_MODE_DISABLE){
@@ -327,7 +331,7 @@ int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
 }
 
 /*
- *
+ * Configuración para enviar un mensaje tipo String (Mensaje -> Cadena de caracteres)
  */
 void usart_writeMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
 
