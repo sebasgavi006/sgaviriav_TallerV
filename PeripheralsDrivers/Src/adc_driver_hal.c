@@ -6,7 +6,7 @@
  */
 
 /* Importando las librerías */
-#include "stm32f446xx.h"
+#include "stm32f4xx.h"
 #include "stm32_assert.h"
 #include "gpio_driver_hal.h"
 #include "adc_driver_hal.h"
@@ -914,6 +914,15 @@ static void adc_config_interrupt(ADC_Config_t *adcConfig){
  */
 void adc_peripheralOnOFF(uint8_t state){
 
+	if(state == ADC_ON){
+		// Activamos el módulo ADC
+		ADC1->CR2 |= ADC_CR2_ADON;
+	}
+	else{
+		// Desactivamos el módulo ADC
+		ADC1->CR2 &= ~ADC_CR2_ADON;
+	}
+
 }
 
 
@@ -923,6 +932,15 @@ void adc_peripheralOnOFF(uint8_t state){
  * No es necesario para el caso de un canal simple
  */
 void adc_ScanMode(uint8_t state){
+
+	if(state == SCAN_ON){
+		// Activamos el Scan mode en el CR1
+		ADC1->CR1 |= ADC_CR1_SCAN;
+	}
+	else{
+		// Desactivamos el Scan mode
+		ADC1->CR1 &= ~ADC_CR1_SCAN;
+	}
 
 }
 
@@ -963,9 +981,11 @@ uint16_t adc_GetValue(void){
  * Esta es la ISR de la interrupción por conversión ADC
  */
 void ADC_IRQHandler(void){
-	__attribute__((weak)) void adc_CompleteCallback(void){
-		__NOP();
-	}
+
+}
+
+__attribute__((weak)) void adc_CompleteCallback(void){
+	__NOP();
 }
 
 
