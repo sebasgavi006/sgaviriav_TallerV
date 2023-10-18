@@ -82,7 +82,7 @@ enum{
  * - Resolution			-> 6bit, 8bit, 10bit, 12bit are the possible options.
  * - Sampling Period	-> Related to the SARs procedure.
  * - Data aligment		-> left or right, depends on the app. Default is right
- * - ADC data			-> holds the data (in the register). *
+ * - ADC data			-> holds the data (in the register).
  */
 
 typedef struct{
