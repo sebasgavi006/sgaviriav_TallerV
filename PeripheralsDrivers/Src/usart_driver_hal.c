@@ -268,23 +268,23 @@ static void usart_config_mode(USART_Handler_t *ptrUsartHandler){
 	case USART_MODE_RX:
 	{
 		// Activamos la parte del sistema encargada de recibir
-		ptrUsartHandler->ptrUSARTx->SR &= ~USART_CR1_TE;	// Limpiamos (desactivamos) la Transmisión
-		ptrUsartHandler->ptrUSARTx->SR |= USART_CR1_RE;		// Activamos la Rcepción
+		ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_TE;	// Limpiamos (desactivamos) la Transmisión
+		ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_RE;		// Activamos la Rcepción
 
 		break;
 	}
 	case USART_MODE_RXTX:
 	{
 		// Activamos ambas partes, tanto transmision como recepcion
-		ptrUsartHandler->ptrUSARTx->SR |= USART_CR1_RE;	// Activamos la Recepción
-		ptrUsartHandler->ptrUSARTx->SR |= USART_CR1_TE;	// Activamos la Transmisión
+		ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_RE;	// Activamos la Recepción
+		ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_TE;	// Activamos la Transmisión
 		break;
 	}
 	case USART_MODE_DISABLE:
 	{
 		// Desactivamos ambos canales
-		ptrUsartHandler->ptrUSARTx->SR &= ~USART_CR1_RE;
-		ptrUsartHandler->ptrUSARTx->SR &= ~USART_CR1_TE;
+		ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_RE;
+		ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_TE;
 
 		// Desactivamos el UsartX
 		ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_UE;
@@ -342,11 +342,11 @@ static void usart_enable_peripheral(USART_Handler_t *ptrUsartHandler){
  * función para escribir un solo char
  */
 int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
-	while( !(ptrUsartHandler->ptrUSARTx->SR & USART_SR_TXE)){
+	while( !(ptrUsartHandler->ptrUSARTx->SR & USART_SR_TXE)){	// Verifica que no hayan datos actualmente en el Transmit Data Register
 		__NOP();
 	}
 
-	// Escriba acá su código
+
 
 	return dataToSend;
 }
