@@ -339,7 +339,7 @@ static void usart_enable_peripheral(USART_Handler_t *ptrUsartHandler){
 }
 
 /*
- * función para escribir un solo char
+ * Función para escribir un solo char
  */
 int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
 	while( !(ptrUsartHandler->ptrUSARTx->SR & USART_SR_TXE)){	// Verifica que no hayan datos actualmente en el Transmit Data Register
@@ -365,9 +365,32 @@ uint8_t usart_getRxData(void){
 /* Handler de la interrupción del USART
  * Acá deben estar todas las interrupciones asociadas: TX, RX, PE...
  */
+void USART1_IRQHandler(void){
+	// Evaluamos si la interrupción que se dio es por RX
+	if(USART1->SR & USART_SR_RXNE){
+
+
+		// Bajamos la bandera del RXNE
+		USART1->SR &= ~USART_SR_RXNE;
+	}
+
+	usart1_RxCallback();
+
+}
+
+/* Handler de la interrupción del USART
+ * Acá deben estar todas las interrupciones asociadas: TX, RX, PE...
+ */
 void USART2_IRQHandler(void){
 	// Evaluamos si la interrupción que se dio es por RX
-    // Escriba acá su código
+	if(USART2->SR & USART_SR_RXNE){
+
+
+		// Bajamos la bandera del RXNE
+		USART2->SR &= ~USART_SR_RXNE;
+	}
+
+	usart2_RxCallback();
 }
 
 /* Handler de la interrupción del USART
@@ -375,15 +398,15 @@ void USART2_IRQHandler(void){
  */
 void USART6_IRQHandler(void){
 	// Evaluamos si la interrupción que se dio es por RX
-    // Escriba acá su código
-}
+	if(USART6->SR & USART_SR_RXNE){
 
-/* Handler de la interrupción del USART
- * Acá deben estar todas las interrupciones asociadas: TX, RX, PE...
- */
-void USART1_IRQHandler(void){
-	// Evaluamos si la interrupción que se dio es por RX
-    // Escriba acá su código
+
+		// Bajamos la bandera del RXNE
+		USART6->SR &= ~USART_SR_RXNE;
+	}
+
+
+	usart6_RxCallback();
 }
 
 
