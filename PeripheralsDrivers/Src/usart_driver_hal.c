@@ -253,37 +253,45 @@ static void usart_config_baudrate(USART_Handler_t *ptrUsartHandler){
  * Aquí configuramos el modo de funcionamiento del USART:
  * - TX para enviar (Transmitter)
  * - RX para recibir (Receiver)
- * - TXRX para transmitir y recibir *
+ * - TXRX para transmitir y recibir
  */
 static void usart_config_mode(USART_Handler_t *ptrUsartHandler){
 	switch(ptrUsartHandler->USART_Config.mode){
 	case USART_MODE_TX:
 	{
 		// Activamos la parte del sistema encargada de enviar
-		// Escriba acá su código
+		ptrUsartHandler->ptrUSARTx->SR &= ~USART_CR1_RE;	// Limpiamos (desactivamos) la Recepción
+		ptrUsartHandler->ptrUSARTx->SR |= USART_CR1_TE;		// Activamos la Transmisión
+
 		break;
 	}
 	case USART_MODE_RX:
 	{
 		// Activamos la parte del sistema encargada de recibir
-		// Escriba acá su código
+		ptrUsartHandler->ptrUSARTx->SR &= ~USART_CR1_TE;	// Limpiamos (desactivamos) la Transmisión
+		ptrUsartHandler->ptrUSARTx->SR |= USART_CR1_RE;		// Activamos la Rcepción
+
 		break;
 	}
 	case USART_MODE_RXTX:
 	{
 		// Activamos ambas partes, tanto transmision como recepcion
-		// Escriba acá su código
+		ptrUsartHandler->ptrUSARTx->SR |= USART_CR1_RE;	// Activamos la Recepción
+		ptrUsartHandler->ptrUSARTx->SR |= USART_CR1_TE;	// Activamos la Transmisión
 		break;
 	}
 	case USART_MODE_DISABLE:
 	{
 		// Desactivamos ambos canales
-		// Escriba acá su código
+		ptrUsartHandler->ptrUSARTx->SR &= ~USART_CR1_RE;
+		ptrUsartHandler->ptrUSARTx->SR &= ~USART_CR1_TE;
+
+		// Desactivamos el UsartX
 		ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_UE;
 		break;
 	}
 	}
-}
+}	// Fin de la función usart_config_mode
 
 
 /**
@@ -295,7 +303,7 @@ static void usart_config_interrupt(USART_Handler_t *ptrUsartHandler){
 		if(ptrUsartHandler->USART_Config.enableIntRX == USART_RX_INTERRUP_ENABLE){
 			// Como está activada, debemos configurar la interrupción por recepción
 			/* Debemos activar la interrupción RX en la configuración del USART */
-			// Escriba acá su código
+			ptrUsartHandler->ptrUSARTx->CR1 |= 	USART_CR1_RXNEIE;
 
 			/* Debemos matricular la interrupción en el NVIC */
 			/* Lo debemos hacer para cada uno de las posibles opciones que tengamos (USART1, USART2, USART6) */
@@ -305,17 +313,20 @@ static void usart_config_interrupt(USART_Handler_t *ptrUsartHandler){
 			}
 
 			else if(ptrUsartHandler->ptrUSARTx == USART2){
-                // Escriba acá su código
-				}
+				__NVIC_EnableIRQ(USART2_IRQn);
+				__NVIC_SetPriority(USART2_IRQn, 2);
+			}
 
 			else if(ptrUsartHandler->ptrUSARTx == USART6){
-                // Escriba acá su código
+				__NVIC_EnableIRQ(USART6_IRQn);
+				__NVIC_SetPriority(USART6_IRQn, 2);
 			}
 		}
 		else{
-
+			// Deshabilitamos la interrupción por recepción
+			ptrUsartHandler->ptrUSARTx->CR1 &= 	~USART_CR1_RXNEIE;
 		}
-}
+}	// Fin función usart_config_interrupt
 
 
 /**
