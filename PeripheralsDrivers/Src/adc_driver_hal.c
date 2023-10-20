@@ -1043,8 +1043,9 @@ uint16_t adc_GetValue(void){
 void ADC_IRQHandler(void){
 
 	// Bajamos a bandera, indicando que ya se está atendiendo la interrupción
+	ADC1->SR &= ~ADC_SR_EOC;
 
-
+	// Se llama la función CallBack que atiende la interrupción
 	adc_CompleteCallback();
 }
 

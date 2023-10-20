@@ -324,7 +324,7 @@ static void usart_config_interrupt(USART_Handler_t *ptrUsartHandler){
 		}
 		else{
 			// Deshabilitamos la interrupción por recepción
-			ptrUsartHandler->ptrUSARTx->CR1 &= 	~USART_CR1_RXNEIE;
+			ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_RXNEIE;
 		}
 }	// Fin función usart_config_interrupt
 
