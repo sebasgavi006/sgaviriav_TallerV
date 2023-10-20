@@ -897,6 +897,21 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
  */
 static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig){
 
+	/* De momento como sólo usamos un canal, lo configuramos para que sea el
+	 * primer canal de al secuencia
+	 */
+
+	/* Las secuencias se configuran en los registros ADC1->SQR1, ADC1->SQR2 y ADC1->SQR3
+	 * Configuramos la cantidad de canales que se usarań en la secuencia
+	 */
+	ADC1->SQR1 &= ~ADC_SQR1_L; // Aquí ponemos cuántos canales vamos a usar. Por defecto 0b0000 para 1 conversión
+
+	/* Para configurar el CanalX en la posición 1 de la secuencia. Escribimos el número del canal
+	 * en el registro correspondiente a la posición de la secuencia que queremos que ocupe
+	 */
+	ADC1->SQR3 |= (adcConfig->channel << ADC_SQR3_SQ1_Pos); // Se haría similar para las demás posiciones de la secuencia
+
+
 }
 
 
@@ -905,7 +920,27 @@ static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig){
  */
 static void adc_config_interrupt(ADC_Config_t *adcConfig){
 
-}
+	/*
+	 * Activamos/Desactivamos las interrupciones debido a la finalización de una conversión
+	 * simple o de una secuencia
+	 */
+	switch(adcConfig->interrupState){
+	case ADC_INT_ENABLE: {
+		// Activamos las interrupciones del ADC debidas a conversiones
+		ADC1->CR1 |= ADC_CR1_EOCIE;
+		break;
+	}
+	case ADC_INT_DISABLE: {
+		// Desactivamos las interrupciones del ADC
+		ADC1->CR1 &= ~ADC_CR1_EOCIE;
+		break;
+	}
+	default: {
+		break;
+	}
+	}
+
+}	// Fin de la función adc_config_interrupt
 
 
 /*
@@ -950,6 +985,13 @@ void adc_ScanMode(uint8_t state){
  */
 void adc_StartSingleConv(void){
 
+	if(ADC1->CR2 & ADC_CR2_ADON){
+		// Encendemos la conversión simple solo si está encendido el ADC
+		ADC1->CR2 |= ADC_CR2_SWSTART; // Realiza una única conversión y se detiene automáticamente
+	}
+	else{
+		__NOP();
+	}
 }
 
 
@@ -958,6 +1000,13 @@ void adc_StartSingleConv(void){
  */
 void adc_StartContinuousConv(void){
 
+	if(ADC1->CR2 & ADC_CR2_ADON){
+		// Encendemos la conversión continua solo si está encendido el ADC
+		ADC1->CR2 |= ADC_CR2_CONT;
+	}
+	else{
+		__NOP();
+	}
 }
 
 
@@ -965,6 +1014,9 @@ void adc_StartContinuousConv(void){
  * Función que detiene la conversión ADC continua
  */
 void adc_StopContinuousConv(void){
+
+	// Detenemos la conversión continua, cambiando a modo de conversión simple
+	ADC1->CR2 &= ~ADC_CR2_CONT;
 
 }
 
@@ -982,6 +1034,9 @@ uint16_t adc_GetValue(void){
  */
 void ADC_IRQHandler(void){
 
+
+
+	adc_CompleteCallback();
 }
 
 __attribute__((weak)) void adc_CompleteCallback(void){
