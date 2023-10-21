@@ -17,8 +17,8 @@
 // Se define un pin de prueba
 GPIO_Handler_t stateLed = {0}; // PinA5
 Timer_Handler_t blinkTimer = {0}; // Timer 2
-USART_Handler_t pinTx = {0} // Pin para la transmisión serial
-USART_Handler_t pinRx = {0} // Pin para la recepción serial
+USART_Handler_t pinTx = {0}; // Pin para la transmisión serial
+USART_Handler_t pinRx = {0}; // Pin para la recepción serial
 uint8_t receiveChar = '\0';
 uint8_t sendMsg = 0;
 char bufferData[64] = {0};
@@ -57,6 +57,7 @@ int main(void){
  *
  * 	CANAL ADC	PIN
  *
+ *	ADC1_0		PA0
  * 	ADC1_1		PA1
  * 	ADC1_2		PA2
  * 	ADC1_3		PA3

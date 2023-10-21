@@ -49,7 +49,7 @@ int main(void){
  * ===== IMPORTANTE =====
  * Los siguientes pines tienen las funciones alternativas RX, TX y RXTX:
  *
- * 	USART		TX		RX		RXTX
+ * 	USART		TX		RX
  *
  * 	USART2		PA2		PA3
  * 	USART6		PC6		PC7
