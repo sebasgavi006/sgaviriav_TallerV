@@ -1033,6 +1033,11 @@ void adc_StopContinuousConv(void){
  * Función que retorna el último dato adquirido por el ADC
  */
 uint16_t adc_GetValue(void){
+
+	// Guardamos el valor del DR (Data Register) en una variable
+	adcRawData = ADC1->DR;	/* 	Aunque la variable es de 16 bits y el
+								Data Register es de 32, los 16 bits menos
+								significativos del final no importan */
 	return adcRawData;
 }
 
@@ -1058,6 +1063,110 @@ __attribute__((weak)) void adc_CompleteCallback(void){
  * Esta función configura los pines que deseamos que funcionen con ADC
  */
 void adc_ConfigAnalogPin(uint8_t adcChannel){
+
+	//Configuramos cada Pin independientemente, según el canal seleccionado
+	switch(adcChannel){
+	case CHANNEL_0: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_0;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_1: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_1;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_2: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_2;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_3: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_3;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_4: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_4;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_5: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_5;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_6: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_6;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_7: {
+		handlerADCPin.pGPIOx					= GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_7;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_8: {
+		handlerADCPin.pGPIOx					= GPIOB;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_0;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_9: {
+		handlerADCPin.pGPIOx					= GPIOB;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_1;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_10: {
+		handlerADCPin.pGPIOx					= GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_0;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_11: {
+		handlerADCPin.pGPIOx					= GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_1;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_12: {
+		handlerADCPin.pGPIOx					= GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_2;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_13: {
+		handlerADCPin.pGPIOx					= GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_3;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_14: {
+		handlerADCPin.pGPIOx					= GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_4;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	case CHANNEL_15: {
+		handlerADCPin.pGPIOx					= GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_5;
+		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		break;
+	}
+	default:{
+		__NOP();
+		break;
+	}
+	}
 
 }
 

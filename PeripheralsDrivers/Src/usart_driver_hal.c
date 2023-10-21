@@ -40,11 +40,11 @@ void usart_Config(USART_Handler_t *ptrUsartHandler){
 	usart_enable_clock_peripheral(ptrUsartHandler);
 
 	/* 2. Configuramos el tamaño del dato, la paridad y los bit de parada */
-	/* En el CR1 estan parity (PCE y PS) y tamaño del dato (M) */
+	/* En el CR1 están parity (PCE y PS) y tamaño del dato (M) */
 	/* Mientras que en CR2 estan los stopbit (STOP)*/
 	/* Configuracion del Baudrate (registro BRR) */
 	/* Configuramos el modo: only TX, only RX, o RXTX */
-	/* Por ultimo activamos el modulo USART cuando todo esta correctamente configurado */
+	/* Por último, activamos el modulo USART cuando todo esta correctamente configurado */
 
 	// 2.1 Comienzo por limpiar los registros, para cargar la configuración desde cero
 	ptrUsartHandler->ptrUSARTx->CR1 = 0;
@@ -117,14 +117,14 @@ static void usart_config_parity(USART_Handler_t *ptrUsartHandler){
 		if(ptrUsartHandler->USART_Config.parity == USART_PARITY_EVEN){
 			// Es even, entonces cargamos la configuracion adecuada (Paridad par)
 			ptrUsartHandler->ptrUSARTx->CR1 &= ~(USART_CR1_PS);
-			
-		}else{
+		}
+		else{
 			// Si es "else" significa que la paridad seleccionada es ODD,
 			// y cargamos esta configuracion (Paridad Impar)
 			ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_PS;
-
 		}
-	}else{
+	}
+	else{
 		// Si llegamos aca, es porque no deseamos tener el parity-check
 		// Desactivamos la verificación de paridad
 		ptrUsartHandler->ptrUSARTx->CR1 &= ~(USART_CR1_PCE);
@@ -325,6 +325,18 @@ static void usart_config_interrupt(USART_Handler_t *ptrUsartHandler){
 		else{
 			// Deshabilitamos la interrupción por recepción
 			ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_RXNEIE;
+
+			/* Debemos desmatricular la interrupción en el NVIC */
+			/* Lo debemos hacer para cada uno de las posibles opciones que tengamos (USART1, USART2, USART6) */
+			if(ptrUsartHandler->ptrUSARTx == USART1){
+				__NVIC_DisableIRQ(USART1_IRQn);
+			}
+			else if(ptrUsartHandler->ptrUSARTx == USART2){
+				__NVIC_DisableIRQ(USART2_IRQn);
+			}
+			else if(ptrUsartHandler->ptrUSARTx == USART6){
+				__NVIC_DisableIRQ(USART6_IRQn);
+			}
 		}
 }	// Fin función usart_config_interrupt
 
@@ -334,7 +346,12 @@ static void usart_config_interrupt(USART_Handler_t *ptrUsartHandler){
  */
 static void usart_enable_peripheral(USART_Handler_t *ptrUsartHandler){
 	if(ptrUsartHandler->USART_Config.mode != USART_MODE_DISABLE){
+		// Activamos el USART
 		ptrUsartHandler->ptrUSARTx->CR1 |= USART_CR1_UE;
+	}
+	else{
+		// Deactivamos el USART
+		ptrUsartHandler->ptrUSARTx->CR1 &= ~USART_CR1_UE;
 	}
 }
 
@@ -358,8 +375,14 @@ int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
  * Configuración para enviar un mensaje tipo String (Mensaje -> Cadena de caracteres)
  */
 void usart_writeMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
+	while( !(ptrUsartHandler->ptrUSARTx->SR & USART_SR_TXE)){	// Verifica que no hayan datos actualmente en el Transmit Data Register
+		__NOP();
+	}
 
+	// Escribimos el char que queremos enviar en el Data Register
+	ptrUsartHandler->ptrUSARTx->DR = *msgToSend;
 
+	return *msgToSend;
 }
 
 
