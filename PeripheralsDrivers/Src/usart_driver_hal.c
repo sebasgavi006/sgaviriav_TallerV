@@ -346,7 +346,8 @@ int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
 		__NOP();
 	}
 
-
+	// Escribimos el char que queremos enviar en el Data Register
+	ptrUsartHandler->ptrUSARTx->DR = dataToSend;
 
 	return dataToSend;
 }
@@ -361,6 +362,29 @@ void usart_writeMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
 uint8_t usart_getRxData(void){
 	return auxRxData;
 }
+
+
+__attribute__ ((weak)) void usart1_RxCallback(void){
+	  /* NOTE : This function should not be modified, when the callback is needed,
+	            the BasicTimer_Callback could be implemented in the main file
+	   */
+	__NOP();
+}
+
+__attribute__ ((weak)) void usart2_RxCallback(void){
+	  /* NOTE : This function should not be modified, when the callback is needed,
+	            the BasicTimer_Callback could be implemented in the main file
+	   */
+	__NOP();
+}
+
+__attribute__ ((weak)) void usart6_RxCallback(void){
+	  /* NOTE : This function should not be modified, when the callback is needed,
+	            the BasicTimer_Callback could be implemented in the main file
+	   */
+	__NOP();
+}
+
 
 /* Handler de la interrupción del USART
  * Acá deben estar todas las interrupciones asociadas: TX, RX, PE...
@@ -410,23 +434,3 @@ void USART6_IRQHandler(void){
 }
 
 
-__attribute__ ((weak)) void usart1_RxCallback(void){
-	  /* NOTE : This function should not be modified, when the callback is needed,
-	            the BasicTimer_Callback could be implemented in the main file
-	   */
-	__NOP();
-}
-
-__attribute__ ((weak)) void usart2_RxCallback(void){
-	  /* NOTE : This function should not be modified, when the callback is needed,
-	            the BasicTimer_Callback could be implemented in the main file
-	   */
-	__NOP();
-}
-
-__attribute__ ((weak)) void usart6_RxCallback(void){
-	  /* NOTE : This function should not be modified, when the callback is needed,
-	            the BasicTimer_Callback could be implemented in the main file
-	   */
-	__NOP();
-}
