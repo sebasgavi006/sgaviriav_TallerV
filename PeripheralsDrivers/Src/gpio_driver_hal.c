@@ -228,6 +228,7 @@ void gpio_config_pullup_pulldown(GPIO_Handler_t *pGPIOHandler){	//Función priva
 
 /*
  * Allows to configure other functions (more specialized) on the selected PinX
+ * (Revisar Tabla 8 del Datasheet del STM32F411)
  */
 void gpio_config_alternate_function(GPIO_Handler_t *pGPIOHandler){	//Función privada
 

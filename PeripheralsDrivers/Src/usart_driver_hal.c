@@ -338,6 +338,7 @@ static void usart_enable_peripheral(USART_Handler_t *ptrUsartHandler){
 	}
 }
 
+
 /*
  * Función para escribir un solo char
  */
@@ -352,12 +353,15 @@ int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
 	return dataToSend;
 }
 
+
 /*
  * Configuración para enviar un mensaje tipo String (Mensaje -> Cadena de caracteres)
  */
 void usart_writeMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
 
+
 }
+
 
 uint8_t usart_getRxData(void){
 	return auxRxData;

@@ -15,16 +15,41 @@
 // Se define un pin de prueba
 GPIO_Handler_t stateLed = {0}; // PinA5
 
-Timer_Handler_t blinkTimer = {0};
+Timer_Handler_t blinkTimer = {0}; // Timer 2
 
 
-/* Función principal del programa */
-int main(void)
-{
+// Headers de las funciones
+void configPeripherals(void);
 
-	/* Configurando el pin */
+
+
+/* ===== Funciión principal del programa ===== */
+int main(void){
+
+	/* Cargamos la configuración de los periféricos */
+	configPeripherals();
+
+
+
+
+	/* Loop forever */
+	while(1){
+
+	}
+
+}	// Fin del main
+
+
+/*
+ * Definimos una función para inicializar las configuraciones
+ * de los diferentes periféricos
+ */
+void configPeripherals(void){
+
+	// 1. ===== PUERTOS Y PINES =====
+	/* Configurando el pin para el Blinky*/
 	stateLed.pGPIOx								= GPIOA;
-	stateLed.pinConfig.GPIO_PinNumber			= PIN_5;
+	stateLed.pinConfig.GPIO_PinNumber			= PIN_5;	// PinA5 -> Led2 del STM32F411
 	stateLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
 	stateLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	stateLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
@@ -34,10 +59,14 @@ int main(void)
 	gpio_Config(&stateLed);
 	gpio_WritePin(&stateLed, SET);
 
-	/* Configurando el Timer */
-	blinkTimer.pTIMx								= TIM4;
+
+
+
+	// 2. ===== TIMERS =====
+	/* Configurando el Timer del Blinky*/
+	blinkTimer.pTIMx								= TIM2;
 	blinkTimer.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	blinkTimer.TIMx_Config.TIMx_Period				= 100;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
+	blinkTimer.TIMx_Config.TIMx_Period				= 500;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (500 ms)
 	blinkTimer.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuante ascendente
 	blinkTimer.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
 
@@ -48,25 +77,33 @@ int main(void)
 	timer_SetState(&blinkTimer, TIMER_ON);
 
 
-	/* Loop forever */
-	while(1){
+	// 3. ===== Interrupciones EXTI =====
 
-	}
 
-}
+
+	// 4. ===== USARTS =====
+
+
+
+	// 5. ===== ADC =====
+
+
+}	// Fin de la configuración de los periféricos
+
 
 
 /*
  * Overwiter function
  */
 
-
 void Timer4_Callback(void){
 	gpio_TooglePin(&stateLed);
 }
 
 
-/* Función assert para detectar problemas de paŕametros incorrectos */
+/*
+ * Función assert para detectar problemas de paŕametros incorrectos
+ */
 void assert_failed(uint8_t* file, uint32_t line){
 	while(1){
 		// problems...
