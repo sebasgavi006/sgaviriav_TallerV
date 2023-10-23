@@ -92,12 +92,24 @@ typedef struct
 }USART_Handler_t;
 
 
+/*
+ * Estructura para guardar las variables para cada dato de los diferentes USART
+ */
+typedef struct
+{
+	uint8_t rxData_USART1;
+	uint8_t rxData_USART2;
+	uint8_t rxData_USART6;
+}rxDataUsart;
+
 
 /* Definicion de los prototipos para las funciones del USART */
 void usart_Config(USART_Handler_t *ptrUsartHandler);
 int  usart_WriteChar(USART_Handler_t *ptrUsartHandler, char dataToSend );
 void usart_WriteMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend );
-uint8_t usart_getRxData(void);
+uint8_t usart1_getRxData(void);
+uint8_t usart2_getRxData(void);
+uint8_t usart6_getRxData(void);
 void usart1_RxCallback(void);
 void usart2_RxCallback(void);
 void usart6_RxCallback(void);

@@ -9,8 +9,7 @@
 #include "stm32f4xx.h"
 #include "usart_driver_hal.h"
 
-
-uint8_t auxRxData = 0;
+rxDataUsart auxRxData = {0}; // Arreglo que guarda los valores de los datos recibidos en cada interrupción de los 3 USART
 
 /* === Headers for private functions === */
 static void usart_enable_clock_peripheral(USART_Handler_t *ptrUsartHandler);
@@ -388,8 +387,16 @@ void usart_WriteMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
 }
 
 
-uint8_t usart_getRxData(void){
-	return auxRxData;
+uint8_t usart1_getRxData(void){
+	return auxRxData.rxData_USART1;
+}
+
+uint8_t usart2_getRxData(void){
+	return auxRxData.rxData_USART1;
+}
+
+uint8_t usart6_getRxData(void){
+	return auxRxData.rxData_USART1;
 }
 
 
@@ -422,13 +429,19 @@ void USART1_IRQHandler(void){
 	// Evaluamos si la interrupción que se dio es por RX
 	if(USART1->SR & USART_SR_RXNE){
 
-
 		// Bajamos la bandera del RXNE
 		USART1->SR &= ~USART_SR_RXNE;
+
+		// Guardamos el dato recibido en su variable correspondiente
+		auxRxData.rxData_USART1 = USART1->DR;
+
+		// Llamamos al Callback del USART1
+		usart1_RxCallback();
 	}
-
-	usart1_RxCallback();
-
+	// Evaluamos si la interrupción es por TX
+	else{
+		__NOP();
+	}
 }
 
 /* Handler de la interrupción del USART
@@ -438,12 +451,19 @@ void USART2_IRQHandler(void){
 	// Evaluamos si la interrupción que se dio es por RX
 	if(USART2->SR & USART_SR_RXNE){
 
-
 		// Bajamos la bandera del RXNE
 		USART2->SR &= ~USART_SR_RXNE;
-	}
 
-	usart2_RxCallback();
+		// Guardamos el dato recibido en su variable correspondiente
+		auxRxData.rxData_USART2 = USART2->DR;
+
+		// Llamamos al Callback del USART2
+		usart2_RxCallback();
+	}
+	// Evaluamos si la interrupción es por TX
+	else{
+		__NOP();
+	}
 }
 
 /* Handler de la interrupción del USART
@@ -453,13 +473,19 @@ void USART6_IRQHandler(void){
 	// Evaluamos si la interrupción que se dio es por RX
 	if(USART6->SR & USART_SR_RXNE){
 
-
 		// Bajamos la bandera del RXNE
 		USART6->SR &= ~USART_SR_RXNE;
+
+		// Guardamos el dato recibido en su variable correspondiente
+		auxRxData.rxData_USART6 = USART6->DR;
+
+		// Llamamos al Callback del USART6
+		usart6_RxCallback();
 	}
-
-
-	usart6_RxCallback();
+	// Evaluamos si la interrupción es por TX
+	else{
+		__NOP();
+	}
 }
 
 

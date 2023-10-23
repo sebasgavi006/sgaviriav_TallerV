@@ -287,6 +287,7 @@ void gpio_WritePin(GPIO_Handler_t *pPinHandler, uint8_t newState){	// Función p
  * Función para leer el estado de un pin específico
  */
 uint32_t gpio_ReadPin(GPIO_Handler_t *pPinHandler){
+
 	// Creamos unas variable auxiliares para la máscara y para devolver el valor leído del PinX
 	uint32_t pinValue = 0;
 	uint32_t mask = 0;
