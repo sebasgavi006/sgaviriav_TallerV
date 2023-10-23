@@ -929,7 +929,7 @@ static void adc_config_interrupt(ADC_Config_t *adcConfig){
 		// Activamos las interrupciones del ADC debidas a conversiones
 		ADC1->CR1 |= ADC_CR1_EOCIE;
 
-		// Activamos el canal del NVIC para leer las interrupciones
+		// Activamos el canal del NVIC para leer las interrupciones (Matriculamos la interrupción)
 		__NVIC_EnableIRQ(ADC_IRQn);
 
 		break;
@@ -938,12 +938,13 @@ static void adc_config_interrupt(ADC_Config_t *adcConfig){
 		// Desactivamos las interrupciones del ADC
 		ADC1->CR1 &= ~ADC_CR1_EOCIE;
 
-		// Desactivamos el canal del NVIC
+		// Desmatriculamos la interrupción del canal del NVIC
 		__NVIC_DisableIRQ(ADC_IRQn);
 
 		break;
 	}
 	default: {
+		__NOP();
 		break;
 	}
 	}

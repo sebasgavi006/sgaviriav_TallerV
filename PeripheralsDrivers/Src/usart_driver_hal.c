@@ -359,7 +359,7 @@ static void usart_enable_peripheral(USART_Handler_t *ptrUsartHandler){
 /*
  * Función para escribir un solo char
  */
-int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
+int usart_WriteChar(USART_Handler_t *ptrUsartHandler, char dataToSend){
 	while( !(ptrUsartHandler->ptrUSARTx->SR & USART_SR_TXE)){	// Verifica que no hayan datos actualmente en el Transmit Data Register
 		__NOP();
 	}
@@ -374,15 +374,17 @@ int usart_WriteChar(USART_Handler_t *ptrUsartHandler, int dataToSend){
 /*
  * Configuración para enviar un mensaje tipo String (Mensaje -> Cadena de caracteres)
  */
-void usart_writeMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
+void usart_WriteMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
 	while( !(ptrUsartHandler->ptrUSARTx->SR & USART_SR_TXE)){	// Verifica que no hayan datos actualmente en el Transmit Data Register
 		__NOP();
 	}
 
-	// Escribimos el char que queremos enviar en el Data Register
-	ptrUsartHandler->ptrUSARTx->DR = *msgToSend;
+	while(*msgToSend != '\0'){
+		// Usamos la función usart_WriteChar para escribir cada componente del String msgToSend
+		usart_WriteChar(ptrUsartHandler, *msgToSend);
+		msgToSend++; // Recorremos el arreglo String usando el puntero
+	}
 
-	return *msgToSend;
 }
 
 
