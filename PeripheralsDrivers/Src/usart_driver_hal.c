@@ -386,17 +386,19 @@ void usart_WriteMsg(USART_Handler_t *ptrUsartHandler, char *msgToSend ){
 
 }
 
-
+/*
+ * Funciones para obtener el dato recibido para cada USART independiente
+ */
 uint8_t usart1_getRxData(void){
 	return auxRxData.rxData_USART1;
 }
 
 uint8_t usart2_getRxData(void){
-	return auxRxData.rxData_USART1;
+	return auxRxData.rxData_USART2;
 }
 
 uint8_t usart6_getRxData(void){
-	return auxRxData.rxData_USART1;
+	return auxRxData.rxData_USART6;
 }
 
 
