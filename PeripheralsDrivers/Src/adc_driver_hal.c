@@ -1010,8 +1010,10 @@ void adc_StartSingleConv(void){
 void adc_StartContinuousConv(void){
 
 	if(ADC1->CR2 & ADC_CR2_ADON){
-		// Encendemos la conversión continua solo si está encendido el ADC
+		// Permitir que el proceso de conversión continua solo si está encendido el ADC
 		ADC1->CR2 |= ADC_CR2_CONT;
+		// Encendemos la conversión
+		ADC1->CR2 |= ADC_CR2_SWSTART;
 	}
 	else{
 		__NOP();
@@ -1024,8 +1026,10 @@ void adc_StartContinuousConv(void){
  */
 void adc_StopContinuousConv(void){
 
-	// Detenemos la conversión continua, cambiando a modo de conversión simple
+	// Detenemos el proceso de conversión continua, cambiando a modo de conversión simple
 	ADC1->CR2 &= ~ADC_CR2_CONT;
+	// Apagamos la conversión simple también
+	ADC1->CR2 &= ~ADC_CR2_SWSTART;
 
 }
 
