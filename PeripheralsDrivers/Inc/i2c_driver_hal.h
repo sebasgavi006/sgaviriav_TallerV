@@ -70,13 +70,13 @@ typedef struct
 void i2c_Config(I2C_Handler_t *ptrHandlerI2C);
 void i2c_StartTransaction(I2C_Handler_t *ptrHandlerI2C);
 void i2c_ReStartTransaction(I2C_Handler_t *ptrHandlerI2C);
-void i2c_SendSlaveAsdressRW(I2C_Handler_t *ptrHandlerI2C, uint8_t slaveAdsress, uint8_t read);
+void i2c_SendSlaveAddressRW(I2C_Handler_t *ptrHandlerI2C, uint8_t slaveAddress, uint8_t readOrWrite);
 void i2c_SendMemoryAddress(I2C_Handler_t *ptrHandlerI2C, uint8_t memAddress);
-void i2c_SendDataByte(I2C_Handler_t *ptrHandlerI2C);
+void i2c_SendDataByte(I2C_Handler_t *ptrHandlerI2C, uint8_t dataToWrite);
 uint8_t i2c_ReadDataByte(I2C_Handler_t *ptrHandlerI2C);
 void i2c_StopTransaction(I2C_Handler_t *ptrHandlerI2C);
 void i2c_SendAck(I2C_Handler_t *ptrHandlerI2C);
-void i2c_sendNoAck(I2C_Handler_t *ptrHandlerI2C);
+void i2c_SendNoAck(I2C_Handler_t *ptrHandlerI2C);
 
 /* Funciones públicas de lectura y escritura mediante I2C */
 uint8_t i2c_ReadSingleRegister(I2C_Handler_t *ptrHandlerI2C, uint8_t regToRead);
