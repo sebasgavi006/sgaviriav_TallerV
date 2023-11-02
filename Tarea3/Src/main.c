@@ -40,7 +40,7 @@
 /* Definición de variables contadoras para cada modo
  * del Encoder (Resolución y Sensor) */
 uint8_t contadorRes = 0;
-uint8_t contadorSensor = 0;
+uint8_t contadorSensor = SENSOR1;
 
 /* Definicón de la variable para leer la entrada del Data del Encoder */
 
@@ -52,9 +52,9 @@ uint8_t flagMode = 0;	// Se asigna 0 para indicar que se inicializa en Modo Reso
 // Constantes para identificar los 3 sensores
 enum
 {
-	SENSOR1	= 0,
-	SENSOR2,
-	SENSOR3
+	SENSOR1	= 1,
+	SENSOR2 = 2,
+	SENSOR3 = 3
 };
 
 // Constantes para los modos del Encoder (Resolución y Sensor)
@@ -62,6 +62,13 @@ enum
 {
 	MODO_RESOLUCION = 0,
 	MODO_SENSOR
+};
+
+// Constantes para ON y OFF
+enum
+{
+	OFF = 0,
+	ON
 };
 
 /* ===== Definición de los pines a utilizar ===== */
@@ -113,18 +120,26 @@ EXTI_Config_t exti8 = {0};	// Definimos el EXTI del Encoder (estructura -> "obje
 void systemConfig(void);
 
 // Función para mostrar un número ingresado como parámetro, por medios de ambos display
-void displayNumber(uint8_t numero);
+void displayMode(void);
+
+// Función para representar un numero_x en el 7-segmentos
+void displayNumeros(uint8_t numero_x);
 
 // Función para controlar los segmentos en el modo Sensores
-void
+void modeSensor(void);
 
 // Función para controlar los segmentos en el modo Resolución
+void modeRes(void);
 
 // Función para evaluar si se aumenta o disminuye el contador
 void evaluate(void);
 
 
-/* Función principal del programa */
+
+
+/*
+ * ======== FUNCIÓN PRINCIPAL DEL PROGRAMA ========
+ */
 int main(void)
 {
 
@@ -138,10 +153,11 @@ int main(void)
 
 	}
 
-}
+} // ======== FIN DE LA FUNCIÓN PRINCIPAL ========
+
+
 
 /* ===== Funciones auxiliares ===== */
-
 
 /*
  * Función para cargar las configuraciones de los periféricos
@@ -342,24 +358,62 @@ void systemConfig(void){
 
 
 /*
- * Función para encender los leds del 7-segmentos, para representar el numero_x
+ * Función para controlar los segmentos en el modo Sensores
  */
+void modeSensor(void){
+
+	// Evaluamos cuál sensor está activo (seleccionado)
+	switch(contadorSensor){
+	case SENSOR1:{
+		// Mostramos el número 1
+		displayNumeros(SENSOR1);
+
+		break;
+	}
+	case SENSOR2:{
+			// Mostramos el número 2
+			displayNumeros(SENSOR2);
+
+			break;
+	}
+	case SENSOR3:{
+			// Mostramos el número 3
+			displayNumeros(SENSOR3);
+
+			break;
+	}
+	default:{
+		__NOP();
+		break;
+	}
+
+	}
+
+} // Fin función modeSensor()
 
 
-// Función para mostrar un número ingresado como parámetro, por medios de ambos display
-void displayNumber(uint8_t numero){
+/*
+ * Función para controlar los segmentos en el modo Resolución
+ */
+void modeRes(void){
 
-	/* Lo primero que debemos hacer, es diferenciar las decenas de las unidades dentro
-	 * del número decimal. Para ello, podemos usar el operador módulo
-	 */
-	uint8_t unidades = numero%10;
-	uint8_t decenas = (numero-unidades)/10;
+	// Evaluamos en qué resolución nos encontramos
+}
 
-	if( gpio_ReadPin(&display1) == 1){
-		numeros(decenas);
+
+/*
+ * Función para mostrar el modo, según el display que esté encendido
+ */
+void displayMode(void){
+
+	// Determinamos cuál display está encendido
+	if(gpio_ReadPin(&display1) == ON){
+		// Si es el display izquierdo (1), mostramos el modo Sensor
+		modeRes();
 	}
 	else{
-		numeros(unidades);
+		// Si es el display derecho (2), mostramos el modo Resolución
+		modeSensor();
 	}
 
 }
@@ -403,7 +457,67 @@ void evaluate(void){
 		}
 	}
 
-} // Fin Función
+} // Fin Función evaluate()
+
+
+/*
+ * Función para encender los leds del 7-segmentos, para representar el numero_x
+ */
+void displayNumeros(uint8_t numero_x){
+
+	// Hacemos un switch para cada numero del 0-9
+	switch(numero_x){
+	case 0:{
+		// El led se enciende cuando el voltaje dado por el pin sea bajo
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoF, RESET);
+		gpio_WritePin(&segmentoG, SET);
+		break;
+	}
+
+	case 1:{
+		gpio_WritePin(&segmentoA, SET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, SET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, SET);
+		gpio_WritePin(&segmentoG, SET);
+		break;
+	}
+
+	case 2:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoF, SET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+
+	case 3:{
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoB, RESET);
+		gpio_WritePin(&segmentoC, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoF, SET);
+		gpio_WritePin(&segmentoG, RESET);
+		break;
+	}
+	default:{
+		__NOP();
+		break;
+	}
+	}
+
+} // Fin función displayNumeros()
 
 
 /*
@@ -445,7 +559,7 @@ void Timer3_Callback(void){
  * */
 void Timer2_Callback(void){
 	gpio_TooglePin(&display1);
-	displayNumber(contador);
+	displayMode();
 	gpio_TooglePin(&display2);
 }
 
