@@ -57,7 +57,6 @@ int main(void){
 
 			if(received_USARTx.rxData_USART2 == 's'){
 				usart_WriteMsg(&commSerial, "make simple ADC\n\r");
-
 			}
 
 			if(received_USARTx.rxData_USART2 == 'C'){

@@ -46,8 +46,10 @@ uint8_t contadorSensor = SENSOR1;
 
 uint8_t readData = 0;
 
-/* Definición de las banderas de los EXTI */
-uint8_t flagMode = 0;	// Se asigna 0 para indicar que se inicializa en Modo Resolución
+/* Definición de las banderas */
+uint8_t flagMode = 0;		// Bandera del EXTI del Switch. Se asigna 0 para indicar que se inicializa en Modo Resolución
+uint8_t flagTimer2 = 0; 	// Bandera del conmutador de los display. Con esta bandera encendemos y apagamos los displays.
+uint8_t flagData = 0;		// Bandera del EXTI del Encoder.
 
 // Constantes para identificar los 3 sensores
 enum
@@ -76,10 +78,6 @@ enum
 // Pin para el led de estado
 GPIO_Handler_t stateLed = {0}; // Pin PA5 (led de estado)
 
-// Pin para el led que indica el modo seleccionado por el switch
-GPIO_Handler_t modeLed = {0}; // Pin PA7  (led de modo [Directo o Inverso])
-
-
 // Pines para el encoder
 GPIO_Handler_t encoderClk = {0}; // Pin PC8 (Canal 8 del EXTI)
 GPIO_Handler_t data = {0};	// Pin PB2
@@ -102,7 +100,6 @@ GPIO_Handler_t display1 = {0}; // Pin PA4
 GPIO_Handler_t display2 = {0}; // Pin PA10
 
 
-
 /* Definición de los Timers a utilizar para generar las interrupciones
  * del blinky y del 7 segmentos */
 Timer_Handler_t blinkTimer3 = {0};	// Timer 2 para el stateLed
@@ -112,6 +109,19 @@ Timer_Handler_t sevenSegmentTimer2 = {0};	// Timer 3 para el 7-segmentos
 /* Definición de los EXTI para las interrupciones externas del encoder */
 EXTI_Config_t exti0 = {0};	// Definimos el EXTI del Switch (estructura -> "objeto")
 EXTI_Config_t exti8 = {0};	// Definimos el EXTI del Encoder (estructura -> "objeto")
+
+/* Pines de los canales para la conversión ADC */
+ADC_Config_t sensor1 = {0};		// Canal X -> Pin P
+ADC_Config_t sensor2 = {0};		// Canal X -> Pin P
+ADC_Config_t sensor3 = {0};		// Canal X -> Pin P
+
+/* Configuración de la comunicación serial */
+USART_Handler_t usart6 = {0}; // Configuración de la transmisión serial por USART6
+GPIO_Handler_t pinTx = {0};	// P -> Pin para la transmisión serial
+GPIO_Handler_t pinRx = {0};	// P -> Pin para la recepción serial
+rxDataUsart received_USARTx = {0};	// Estructura para guardar los datos según el USART utilizado
+uint8_t sendMsg = 0;
+char bufferData[64] = {0};
 
 
 /* ===== Headers de las funciones a utilizar en el main ===== */
@@ -142,14 +152,32 @@ void evaluate(void);
  */
 int main(void)
 {
+	// Iniciamos con todas las banderas abajo
+	flagMode = 0;
+	flagTimer2 = 0;
+	flagData = 0;
+
 
 	// Cargamos la configuración de los periféricos
 	systemConfig();
 
 
-
 	/* Loop forever */
 	while(1){
+
+		// Se atiende la interrupción del Timer2
+		if(flagTimer2){
+			flagTimer2 = 0; // Bajamos la bandera
+			displayMode();
+			gpio_TooglePin(&display2);
+		}
+
+		// Se atiende la interrupción del Encoder
+		if(flagData){
+			flagData = 0; // Bajamos la bandera
+			evaluate();
+		}
+
 
 	}
 
@@ -217,12 +245,12 @@ void systemConfig(void){
 	segmentoG.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
 	// Falta configurar el punto
-//	segmentoG.pGPIOx							= GPIOC;
-//	segmentoG.pinConfig.GPIO_PinNumber			= PIN_0;
-//	segmentoG.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
-//	segmentoG.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-//	segmentoG.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-//	segmentoG.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+//	segmentoPunto.pGPIOx							= GPIOC;
+//	segmentoPunto.pinConfig.GPIO_PinNumber			= PIN_0;
+//	segmentoPunto.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+//	segmentoPunto.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+//	segmentoPunto.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+//	segmentoPunto.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
 	/* Cargamos la configuración de los pines */
 	gpio_Config(&segmentoA);
@@ -232,12 +260,11 @@ void systemConfig(void){
 	gpio_Config(&segmentoE);
 	gpio_Config(&segmentoF);
 	gpio_Config(&segmentoG);
-//	gpio_Config(&segmentoPunto);
+	gpio_Config(&segmentoPunto);
 
 
 
-
-	/* ===== Configuramos los pines del encoder ===== */
+	/* ===== Configuramos los pines del Encoder ===== */
 
 	/* Pin del Encoder Clock */
 	encoderClk.pGPIOx							= GPIOC;
@@ -353,6 +380,59 @@ void systemConfig(void){
 	timer_SetState(&sevenSegmentTimer2, TIMER_ON);
 
 
+	/* ===== Configurando el puerto serial USART6 ===== */
+	usart6.ptrUSARTx					= USART6;
+	usart6.USART_Config.baudrate		= USART_BAUDRATE_9600;
+	usart6.USART_Config.datasize		= USART_DATASIZE_8BIT;
+	usart6.USART_Config.parity			= USART_PARITY_NONE;
+	usart6.USART_Config.stopbits		= USART_STOPBIT_1;
+	usart6.USART_Config.mode			= USART_MODE_RXTX;
+	usart6.USART_Config.enableIntRX		= USART_RX_INTERRUP_ENABLE;
+
+	/* Cargamos la configuración de USART */
+	usart_Config(&usart6);
+
+	/*
+	 * Escribimos el caracter nulo para asegurarnos de empezar
+	 * una transmisión "limpia"
+	 */
+	usart_WriteChar(&usart6, '\0');
+
+
+	/* ===== Configuramos los canales del ADC ===== */
+
+	// Configuramos el Sensor 1
+	sensor1.channel				= CHANNEL_0;
+	sensor1.resolution			= RESOLUTION_12_BIT;
+	sensor1.dataAlignment		= ALIGNMENT_RIGHT;
+	sensor1.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
+	sensor1.interrupState		= ADC_INT_ENABLE;
+
+	/* Cargamos la configuración del ADC */
+	adc_ConfigSingleChannel(&sensor1);
+
+
+	// Configuramos el Sensor 2
+	sensor2.channel				= CHANNEL_0;
+	sensor2.resolution			= RESOLUTION_12_BIT;
+	sensor2.dataAlignment		= ALIGNMENT_RIGHT;
+	sensor2.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
+	sensor2.interrupState		= ADC_INT_ENABLE;
+
+	/* Cargamos la configuración del ADC */
+	adc_ConfigSingleChannel(&sensor2);
+
+
+	// Configuramos el Sensor 3
+	sensor3.channel				= CHANNEL_0;
+	sensor3.resolution			= RESOLUTION_12_BIT;
+	sensor3.dataAlignment		= ALIGNMENT_RIGHT;
+	sensor3.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
+	sensor3.interrupState		= ADC_INT_ENABLE;
+
+	/* Cargamos la configuración del ADC */
+	adc_ConfigSingleChannel(&sensor3);
+
 
 } // Fin systemConfig()
 
@@ -361,6 +441,14 @@ void systemConfig(void){
  * Función para controlar los segmentos en el modo Sensores
  */
 void modeSensor(void){
+
+	// Encendemos el segmento del punto si está en modo Sensor
+	if(flagMode == MODO_SENSOR){
+		gpio_WritePin(&segmentoPunto, RESET);
+	}
+	else{
+		gpio_WritePin(&segmentoPunto, SET);
+	}
 
 	// Evaluamos cuál sensor está activo (seleccionado)
 	switch(contadorSensor){
@@ -386,7 +474,6 @@ void modeSensor(void){
 		__NOP();
 		break;
 	}
-
 	}
 
 } // Fin función modeSensor()
@@ -397,14 +484,74 @@ void modeSensor(void){
  */
 void modeRes(void){
 
+	// Encendemos el segmento del punto si está en modo Resolución
+	if(flagMode == MODO_RESOLUCION){
+		gpio_WritePin(&segmentoPunto, RESET);
+	}
+	else{
+		gpio_WritePin(&segmentoPunto, SET);
+	}
+
 	// Evaluamos en qué resolución nos encontramos
-}
+	switch(contadorRes){
+	case RESOLUTION_12_BIT:{
+
+		// Encendemos los segmentos A, D, G
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoA, RESET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoG, RESET);
+
+
+		break;
+	}
+	case RESOLUTION_10_BIT:{
+
+		// Encendemos los segmentos D, G
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoA, SET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoG, RESET);
+
+
+		break;
+	}
+	case RESOLUTION_8_BIT:{
+
+		// Encendemos los segmentos D
+		gpio_WritePin(&segmentoE, SET);
+		gpio_WritePin(&segmentoA, SET);
+		gpio_WritePin(&segmentoD, RESET);
+		gpio_WritePin(&segmentoG, SET);
+
+
+		break;
+	}
+	case RESOLUTION_6_BIT:{
+
+		// Encendemos los segmentos E
+		gpio_WritePin(&segmentoE, RESET);
+		gpio_WritePin(&segmentoA, SET);
+		gpio_WritePin(&segmentoD, SET);
+		gpio_WritePin(&segmentoG, SET);
+
+
+		break;
+	}
+	default:{
+		__NOP();
+		break;
+	}
+	}
+
+} // Fin función modeRes()
 
 
 /*
  * Función para mostrar el modo, según el display que esté encendido
  */
 void displayMode(void){
+
 
 	// Determinamos cuál display está encendido
 	if(gpio_ReadPin(&display1) == ON){
@@ -416,48 +563,7 @@ void displayMode(void){
 		modeSensor();
 	}
 
-}
-
-
-// Función para evaluar si se aumenta o disminuye el contador
-void evaluate(void){
-
-	// Modo Sensor
-	if(flagMode == MODO_SENSOR){
-		if(readData == 1){
-			// Giro en sentido horario -> contadorSensor AUMENTA
-			if(contadorSensor == SENSOR3){
-				contadorSensor--;
-			}
-			contadorSensor++;
-		}
-		else{
-			// Giro en sentido anti-horario -> contadorSensor DISMINUYE
-			if(contadorSensor == SENSOR1){
-				contadorSensor++;
-			}
-			contadorSensor--;
-		}
-	}
-	// Modo Resolución
-	else{
-		if(readData == 1){
-			// Giro en sentido horario -> contadorRes AUMENTA
-			if(contadorRes == RESOLUTION_6_BIT){
-				contadorRes--;
-			}
-			contadorRes++;
-		}
-		else{
-			// Giro en sentido anti-horario -> contadorRes DISMINUYE
-			if(contadorRes == RESOLUTION_12_BIT){
-				contadorRes++;
-			}
-			contadorRes--;
-		}
-	}
-
-} // Fin Función evaluate()
+} // Fin función displayMode()
 
 
 /*
@@ -520,17 +626,54 @@ void displayNumeros(uint8_t numero_x){
 } // Fin función displayNumeros()
 
 
-/*
- * Overwiter function
- */
+// Función para evaluar si se aumenta o disminuye el contador
+void evaluate(void){
 
+	// Modo Sensor
+	if(flagMode == MODO_SENSOR){
+		if(readData == 1){
+			// Giro en sentido horario -> contadorSensor AUMENTA
+			if(contadorSensor == SENSOR3){
+				contadorSensor--;
+			}
+			contadorSensor++;
+		}
+		else{
+			// Giro en sentido anti-horario -> contadorSensor DISMINUYE
+			if(contadorSensor == SENSOR1){
+				contadorSensor++;
+			}
+			contadorSensor--;
+		}
+	}
+	// Modo Resolución
+	else{
+		if(readData == 1){
+			// Giro en sentido horario -> contadorRes AUMENTA
+			if(contadorRes == RESOLUTION_6_BIT){
+				contadorRes--;
+			}
+			contadorRes++;
+		}
+		else{
+			// Giro en sentido anti-horario -> contadorRes DISMINUYE
+			if(contadorRes == RESOLUTION_12_BIT){
+				contadorRes++;
+			}
+			contadorRes--;
+		}
+	}
+
+} // Fin Función evaluate()
+
+
+/* ===== Overwiter function ===== */
 
 /* Función callback para la interrupción del EXTI0, es decir, la interrupción
  * externa debida al switch
  * */
 void callback_ExtInt0(void){
 	flagMode ^= 1;	// Aplicamos un XOR a la bandera para que cambie de valor binario
-//	gpio_TooglePin(&modeLed); Cambiar por el segmento del punto
 
 }
 
@@ -539,8 +682,8 @@ void callback_ExtInt0(void){
  * a la interrupcón externa del encoder (CW o CCW)
  * */
 void callback_ExtInt8(void){
+	flagData = 1;
 	readData = gpio_ReadPin(&data);
-	evaluate();
 
 }
 
@@ -558,11 +701,18 @@ void Timer3_Callback(void){
  * encendidos continuamente
  * */
 void Timer2_Callback(void){
+	flagTimer2 = 1;
 	gpio_TooglePin(&display1);
-	displayMode();
-	gpio_TooglePin(&display2);
+
 }
 
+/* Función que atiende la interrupción debida a la transmisión serial (RX).
+ * Mediante el USART6, controlaremos las mismas funciones que el Encoder.
+ * El Callback obtiene el dato recibido.
+ */
+void usart6_RxCallback(void){
+	received_USARTx.rxData_USART6 = usart6_getRxData();
+}
 
 /* Función assert para detectar problemas de paŕametros incorrectos */
 void assert_failed(uint8_t* file, uint32_t line){
