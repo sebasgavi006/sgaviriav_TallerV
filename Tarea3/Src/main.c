@@ -36,18 +36,35 @@
 #include "usart_driver_hal.h"
 #include "adc_driver_hal.h"
 
-
-/* Definición de una variable contadora global */
-uint8_t contador = 0;
+/* ===== Definición de variables ===== */
+/* Definición de variables contadoras para cada modo
+ * del Encoder (Resolución y Sensor) */
+uint8_t contadorRes = 0;
+uint8_t contadorSensor = 0;
 
 /* Definicón de la variable para leer la entrada del Data del Encoder */
 
 uint8_t readData = 0;
 
 /* Definición de las banderas de los EXTI */
-uint8_t flagMode = 1;	// Se asigna 1 para indicar que se inicializa en Modo directo
+uint8_t flagMode = 0;	// Se asigna 0 para indicar que se inicializa en Modo Resolución
 
-/* Definición de los pines a utilizar */
+// Constantes para identificar los 3 sensores
+enum
+{
+	SENSOR1	= 0,
+	SENSOR2,
+	SENSOR3
+};
+
+// Constantes para los modos del Encoder (Resolución y Sensor)
+enum
+{
+	MODO_RESOLUCION = 0,
+	MODO_SENSOR
+};
+
+/* ===== Definición de los pines a utilizar ===== */
 
 // Pin para el led de estado
 GPIO_Handler_t stateLed = {0}; // Pin PA5 (led de estado)
@@ -69,11 +86,13 @@ GPIO_Handler_t segmentoD = {0}; // Pin PB0
 GPIO_Handler_t segmentoE = {0}; // Pin PC2
 GPIO_Handler_t segmentoF = {0}; // Pin PB10
 GPIO_Handler_t segmentoG = {0}; // Pin PC0
+GPIO_Handler_t segmentoPunto = {0}; // Pin
+
 
 // Pines para controlar la activación-desactivación de los transistores para alternar
 // entre los cristales del 7-segmentos
-GPIO_Handler_t cristal1 = {0}; // Pin PA4
-GPIO_Handler_t cristal2 = {0}; // Pin PA10
+GPIO_Handler_t display1 = {0}; // Pin PA4
+GPIO_Handler_t display2 = {0}; // Pin PA10
 
 
 
@@ -84,17 +103,22 @@ Timer_Handler_t sevenSegmentTimer2 = {0};	// Timer 3 para el 7-segmentos
 
 
 /* Definición de los EXTI para las interrupciones externas del encoder */
-EXTI_Config_t exti_0 = {0};	// Definimos el EXTI del Switch (estructura -> "objeto")
-EXTI_Config_t exti_8 = {0};	// Definimos el EXTI del Encoder (estructura -> "objeto")
+EXTI_Config_t exti0 = {0};	// Definimos el EXTI del Switch (estructura -> "objeto")
+EXTI_Config_t exti8 = {0};	// Definimos el EXTI del Encoder (estructura -> "objeto")
 
 
 /* ===== Headers de las funciones a utilizar en el main ===== */
 
+// Función para cargar las configuraciones de los periféricos
+void systemConfig(void);
+
 // Función para mostrar un número ingresado como parámetro, por medios de ambos display
 void displayNumber(uint8_t numero);
 
-// Función para encender los leds del 7-segmentos, para representar el numero_x
-void numeros(uint8_t numero_x);
+// Función para controlar los segmentos en el modo Sensores
+void
+
+// Función para controlar los segmentos en el modo Resolución
 
 // Función para evaluar si se aumenta o disminuye el contador
 void evaluate(void);
@@ -103,6 +127,26 @@ void evaluate(void);
 /* Función principal del programa */
 int main(void)
 {
+
+	// Cargamos la configuración de los periféricos
+	systemConfig();
+
+
+
+	/* Loop forever */
+	while(1){
+
+	}
+
+}
+
+/* ===== Funciones auxiliares ===== */
+
+
+/*
+ * Función para cargar las configuraciones de los periféricos
+ */
+void systemConfig(void){
 
 	/* ===== Configurando los pines que vamos a utilizar ===== */
 
@@ -156,6 +200,14 @@ int main(void)
 	segmentoG.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoG.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
+	// Falta configurar el punto
+//	segmentoG.pGPIOx							= GPIOC;
+//	segmentoG.pinConfig.GPIO_PinNumber			= PIN_0;
+//	segmentoG.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
+//	segmentoG.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+//	segmentoG.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+//	segmentoG.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+
 	/* Cargamos la configuración de los pines */
 	gpio_Config(&segmentoA);
 	gpio_Config(&segmentoB);
@@ -164,9 +216,12 @@ int main(void)
 	gpio_Config(&segmentoE);
 	gpio_Config(&segmentoF);
 	gpio_Config(&segmentoG);
+//	gpio_Config(&segmentoPunto);
 
 
-	/* Configuramos los pines del encoder */
+
+
+	/* ===== Configuramos los pines del encoder ===== */
 
 	/* Pin del Encoder Clock */
 	encoderClk.pGPIOx							= GPIOC;
@@ -178,7 +233,7 @@ int main(void)
 	sw.pinConfig.GPIO_PinNumber			= PIN_0;
 	sw.pinConfig.GPIO_PinMode			= GPIO_MODE_IN;
 
-	/* Pin del de la salida de datos del encoder */
+	/* Pin de la salida de datos del encoder */
 	data.pGPIOx							= GPIOB;
 	data.pinConfig.GPIO_PinNumber		= PIN_2;
 	data.pinConfig.GPIO_PinMode			= GPIO_MODE_IN;
@@ -188,19 +243,8 @@ int main(void)
 	gpio_Config(&sw);
 	gpio_Config(&data);
 
+
 	/* ===== Configuramos de últimos los leds de estado, modo y los pines para conmutar los cristales del 7-segmentos ====== */
-
-	/* Configuración del pin para el modeLed */
-	modeLed.pGPIOx								= GPIOA;
-	modeLed.pinConfig.GPIO_PinNumber			= PIN_7;
-	modeLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
-	modeLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-	modeLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-	modeLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
-
-	/* Cargamos la confiugración del pin */
-	gpio_Config(&modeLed);
-	gpio_WritePin(&modeLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
 
 	/* Configurando el pin del stateLed */
 	stateLed.pGPIOx								= GPIOA;
@@ -212,48 +256,62 @@ int main(void)
 
 	/* Cargamos la configuración del pin */
 	gpio_Config(&stateLed);
-	gpio_WritePin(&stateLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
+	gpio_WritePin(&stateLed, SET); // El led de estado empieza encendido
+
+
+	// Este ya no es necesario (Se usa el punto del 7-segmentos)
+//	/* Configuración del pin para el modeLed */
+//	modeLed.pGPIOx								= GPIOA;
+//	modeLed.pinConfig.GPIO_PinNumber			= PIN_7;
+//	modeLed.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+//	modeLed.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+//	modeLed.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+//	modeLed.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+//
+//	/* Cargamos la confiugración del pin */
+//	gpio_Config(&modeLed);
+//	gpio_WritePin(&modeLed, SET); // Encendemos el Pin para indicar inicialmente el Modo Directo
 
 
 	/* Configurando el pin del cristal1 (7-segmentos) */
-	cristal1.pGPIOx								= GPIOA;
-	cristal1.pinConfig.GPIO_PinNumber			= PIN_4;
-	cristal1.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
-	cristal1.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-	cristal1.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-	cristal1.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+	display1.pGPIOx								= GPIOA;
+	display1.pinConfig.GPIO_PinNumber			= PIN_4;
+	display1.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	display1.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	display1.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	display1.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
 	/* Cargamos la configuración del pin */
-	gpio_Config(&cristal1);
-	gpio_WritePin(&cristal1, SET); // Encendemos el Pin
+	gpio_Config(&display1);
+	gpio_WritePin(&display1, SET); // Encendemos el Pin
 
 	/* Configurando el pin del cristal2 (7-segmentos) */
-	cristal2.pGPIOx								= GPIOA;
-	cristal2.pinConfig.GPIO_PinNumber			= PIN_10;
-	cristal2.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
-	cristal2.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
-	cristal2.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
-	cristal2.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+	display2.pGPIOx								= GPIOA;
+	display2.pinConfig.GPIO_PinNumber			= PIN_10;
+	display2.pinConfig.GPIO_PinMode				= GPIO_MODE_OUT;
+	display2.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
+	display2.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
+	display2.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
 	/* Cargamos la configuración del pin */
-	gpio_Config(&cristal2);
-	gpio_WritePin(&cristal2, RESET); // Apagamos el Pin
+	gpio_Config(&display2);
+	gpio_WritePin(&display2, RESET); // Apagamos el Pin
 
 
 	/* ====== Configuramos las interrupciones externas (EXTI) ===== */
 	/* Condigurando EXTI0 */
-	exti_0.pGPIOHandler				= &sw;
-	exti_0.edgeType					= EXTERNAL_INTERRUPT_RISING_EDGE;	/* Configurando el pin del cristal1 (7-segmentos) */
+	exti0.pGPIOHandler				= &sw;
+	exti0.edgeType					= EXTERNAL_INTERRUPT_RISING_EDGE;	/* Configurando el pin del cristal1 (7-segmentos) */
 
 	/* Cargamos la configuración del EXTI */
-	exti_Config(&exti_0);
+	exti_Config(&exti0);
 
 	/* Condigurando EXTI8 */
-	exti_8.pGPIOHandler				= &encoderClk;
-	exti_8.edgeType					= EXTERNAL_INTERRUPT_RISING_EDGE;
+	exti8.pGPIOHandler				= &encoderClk;
+	exti8.edgeType					= EXTERNAL_INTERRUPT_RISING_EDGE;
 
 	/* Cargamos la configuración del EXTI */
-	exti_Config(&exti_8);
+	exti_Config(&exti8);
 
 
 	/* ===== Configurando los TIMER ===== */
@@ -280,184 +338,12 @@ int main(void)
 
 
 
-
-	/* Loop forever */
-	while(1){
-
-	}
-
-}
+} // Fin systemConfig()
 
 
 /*
- * Overwiter function
+ * Función para encender los leds del 7-segmentos, para representar el numero_x
  */
-
-
-/* Función callback para la interrupción del EXTI0, es decir, la interrupción
- * externa debida al switch
- * */
-void callback_ExtInt0(void){
-	flagMode ^= 1;	// Aplicamos un XOR a la bandera para que cambie de valor binario
-	gpio_TooglePin(&modeLed);
-
-}
-
-
-/* Función callback que atiende la interrupción del EXTI8, en este caso, corresponde
- * a la interrupcón externa del encoder
- * */
-void callback_ExtInt8(void){
-	readData = gpio_ReadPin(&data);
-	evaluate();
-
-}
-
-
-/* Función que atiende la interrupción debida TIMER2, es decir, que controla
- * al blinky (Led de estado)
- * */
-void Timer3_Callback(void){
-	gpio_TooglePin(&stateLed);
-}
-
-
-/* Esta función atiende la interrupción del TIMER3, la cual controla el activación
- * de los cristales del 7-segmentos a una frecuencia que simule que ambos están
- * encendidos continuamente
- * */
-void Timer2_Callback(void){
-	gpio_TooglePin(&cristal1);
-	displayNumber(contador);
-	gpio_TooglePin(&cristal2);
-}
-
-
-/* ===== Funciones auxiliares ===== */
-
-// Función para encender los leds del 7-segmentos, para representar el numero_x
-void numeros(uint8_t numero_x){
-
-	// Hacemos un switch para cada numero del 0-9
-	switch(numero_x){
-	case 0:{
-		// El led se enciende cuando el voltaje dado por el pin sea bajo
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, RESET);
-		gpio_WritePin(&segmentoE, RESET);
-		gpio_WritePin(&segmentoF, RESET);
-		gpio_WritePin(&segmentoG, SET);
-		break;
-	}
-
-	case 1:{
-		gpio_WritePin(&segmentoA, SET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, SET);
-		gpio_WritePin(&segmentoE, SET);
-		gpio_WritePin(&segmentoF, SET);
-		gpio_WritePin(&segmentoG, SET);
-		break;
-	}
-
-	case 2:{
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, SET);
-		gpio_WritePin(&segmentoD, RESET);
-		gpio_WritePin(&segmentoE, RESET);
-		gpio_WritePin(&segmentoF, SET);
-		gpio_WritePin(&segmentoG, RESET);
-		break;
-	}
-
-	case 3:{
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, RESET);
-		gpio_WritePin(&segmentoE, SET);
-		gpio_WritePin(&segmentoF, SET);
-		gpio_WritePin(&segmentoG, RESET);
-		break;
-	}
-
-	case 4:{
-		gpio_WritePin(&segmentoA, SET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, SET);
-		gpio_WritePin(&segmentoE, SET);
-		gpio_WritePin(&segmentoF, RESET);
-		gpio_WritePin(&segmentoG, RESET);
-		break;
-	}
-
-	case 5:{
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, SET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, RESET);
-		gpio_WritePin(&segmentoE, SET);
-		gpio_WritePin(&segmentoF, RESET);
-		gpio_WritePin(&segmentoG, RESET);
-		break;
-	}
-
-	case 6:{
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, SET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, RESET);
-		gpio_WritePin(&segmentoE, RESET);
-		gpio_WritePin(&segmentoF, RESET);
-		gpio_WritePin(&segmentoG, RESET);
-		break;
-	}
-
-	case 7:{
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, SET);
-		gpio_WritePin(&segmentoE, SET);
-		gpio_WritePin(&segmentoF, SET);
-		gpio_WritePin(&segmentoG, SET);
-		break;
-	}
-
-	case 8:{
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, RESET);
-		gpio_WritePin(&segmentoE, RESET);
-		gpio_WritePin(&segmentoF, RESET);
-		gpio_WritePin(&segmentoG, RESET);
-		break;
-	}
-
-	case 9:{
-		gpio_WritePin(&segmentoA, RESET);
-		gpio_WritePin(&segmentoB, RESET);
-		gpio_WritePin(&segmentoC, RESET);
-		gpio_WritePin(&segmentoD, SET);
-		gpio_WritePin(&segmentoE, SET);
-		gpio_WritePin(&segmentoF, RESET);
-		gpio_WritePin(&segmentoG, RESET);
-		break;
-	}
-
-	default:{
-		__NOP();
-		break;
-	}
-	}
-
-}
 
 
 // Función para mostrar un número ingresado como parámetro, por medios de ambos display
@@ -469,7 +355,7 @@ void displayNumber(uint8_t numero){
 	uint8_t unidades = numero%10;
 	uint8_t decenas = (numero-unidades)/10;
 
-	if( gpio_ReadPin(&cristal1) == 1){
+	if( gpio_ReadPin(&display1) == 1){
 		numeros(decenas);
 	}
 	else{
@@ -482,43 +368,86 @@ void displayNumber(uint8_t numero){
 // Función para evaluar si se aumenta o disminuye el contador
 void evaluate(void){
 
-	// Modo directo
-	if(flagMode == 1){
+	// Modo Sensor
+	if(flagMode == MODO_SENSOR){
 		if(readData == 1){
-			// Giro en sentido horario -> Contador aumenta
-			if(contador == 99){
-				contador--;
+			// Giro en sentido horario -> contadorSensor AUMENTA
+			if(contadorSensor == SENSOR3){
+				contadorSensor--;
 			}
-			contador++;
+			contadorSensor++;
 		}
 		else{
-			// Giro en sentido anti-horario -> Contador disminuye
-			if(contador == 0){
-				contador++;
+			// Giro en sentido anti-horario -> contadorSensor DISMINUYE
+			if(contadorSensor == SENSOR1){
+				contadorSensor++;
 			}
-			contador --;
+			contadorSensor--;
 		}
 	}
-	// Modo inverso
+	// Modo Resolución
 	else{
 		if(readData == 1){
-			// Giro en sentido horario -> Contador disminuye
-			if(contador == 0){
-				contador++;
+			// Giro en sentido horario -> contadorRes AUMENTA
+			if(contadorRes == RESOLUTION_6_BIT){
+				contadorRes--;
 			}
-			contador--;
+			contadorRes++;
 		}
 		else{
-			// Giro en sentido anti-horario -> Contador aumenta
-			if(contador == 99){
-				contador--;
+			// Giro en sentido anti-horario -> contadorRes DISMINUYE
+			if(contadorRes == RESOLUTION_12_BIT){
+				contadorRes++;
 			}
-			contador++;
-
+			contadorRes--;
 		}
 	}
 
 } // Fin Función
+
+
+/*
+ * Overwiter function
+ */
+
+
+/* Función callback para la interrupción del EXTI0, es decir, la interrupción
+ * externa debida al switch
+ * */
+void callback_ExtInt0(void){
+	flagMode ^= 1;	// Aplicamos un XOR a la bandera para que cambie de valor binario
+//	gpio_TooglePin(&modeLed); Cambiar por el segmento del punto
+
+}
+
+
+/* Función callback que atiende la interrupción del EXTI8, en este caso, corresponde
+ * a la interrupcón externa del encoder (CW o CCW)
+ * */
+void callback_ExtInt8(void){
+	readData = gpio_ReadPin(&data);
+	evaluate();
+
+}
+
+
+/* Función que atiende la interrupción debida al TIMER3, es decir, que controla
+ * al blinky (Led de estado)
+ * */
+void Timer3_Callback(void){
+	gpio_TooglePin(&stateLed);
+}
+
+
+/* Esta función atiende la interrupción del TIMER2, la cual controla el activación
+ * de los cristales del 7-segmentos a una frecuencia que simule que ambos están
+ * encendidos continuamente
+ * */
+void Timer2_Callback(void){
+	gpio_TooglePin(&display1);
+	displayNumber(contador);
+	gpio_TooglePin(&display2);
+}
 
 
 /* Función assert para detectar problemas de paŕametros incorrectos */
