@@ -56,7 +56,7 @@ void adc_ConfigSingleChannel(ADC_Config_t *adcConfig){
 	/* 6. Desactivamos el "continuous mode" */
 	adc_StopContinuousConv();
 
-	/* Se coonfigura el sampling (muestreo) */
+	/* Se configura el sampling (muestreo) */
 	adc_set_sampling_and_hold(adcConfig);
 
 	/* 8. Configuramos la secuencia y cuantos elementos hay en la secuencia */
