@@ -6,7 +6,7 @@
  */
 
 /* Importando las librerías */
-#include "stm32f4xx.h"
+//#include "stm32f4xx.h"
 #include "stm32_assert.h"
 #include "gpio_driver_hal.h"
 #include "adc_driver_hal.h"
@@ -19,18 +19,16 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig);
 static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig);
 static void adc_config_interrupt(ADC_Config_t *adcConfig);
 
-
 /* Variables y elementos que necesita internamente el driver para
  * funcionar adecuadamente
  * */
-GPIO_Handler_t	handlerADCPin = {0};
-uint16_t		adcRawData = 0;
-
+GPIO_Handler_t handlerADCPin = { 0 };
+uint16_t adcRawData = 0;
 
 /*
  * Función para configurar un solo canal del ADC
  */
-void adc_ConfigSingleChannel(ADC_Config_t *adcConfig){
+void adc_ConfigSingleChannel(ADC_Config_t *adcConfig) {
 
 	/* 1. Configuramos el PinX para que cumpla la función del canal análogo deseado */
 	adc_ConfigAnalogPin(adcConfig->channel);
@@ -83,20 +81,18 @@ void adc_ConfigSingleChannel(ADC_Config_t *adcConfig){
 
 }
 
-
 /*
  * Enable Clock for ADC peripheral
  * */
-static void adc_enable_clock_peripheral(void){
+static void adc_enable_clock_peripheral(void) {
 	/* Encendemos el periférico ADC en el RCC del APB2 */
 	RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
 }
 
-
 /*
  * Función para configurar la resolución de conversión
  * */
-static void adc_set_resolution(ADC_Config_t *adcConfig){
+static void adc_set_resolution(ADC_Config_t *adcConfig) {
 
 	/* Limpiamos el registro CR1->RES */
 	ADC1->CR1 &= ~ADC_CR1_RES;
@@ -104,7 +100,7 @@ static void adc_set_resolution(ADC_Config_t *adcConfig){
 	/* Vemos la configuración y seleccionamos la resolución
 	 * en el registro CR1->RES, según la configuración
 	 */
-	switch(adcConfig->resolution){
+	switch (adcConfig->resolution) {
 	case RESOLUTION_12_BIT: {
 		ADC1->CR1 &= ~ADC_CR1_RES;
 		break;
@@ -130,48 +126,46 @@ static void adc_set_resolution(ADC_Config_t *adcConfig){
 
 }	// Fin del configuración de resolución
 
-
 /*
  * Configuración para el alineamiento (left or right)
  */
-static void adc_set_alignment(ADC_Config_t *adcConfig){
+static void adc_set_alignment(ADC_Config_t *adcConfig) {
 
 	/* Leemos la configuración cargada para el alineamiento */
-	switch(adcConfig->dataAlignment){
+	switch (adcConfig->dataAlignment) {
 	/* Se configura el alineamiento a la izquierda */
 	case ALIGNMENT_LEFT: {
 		ADC1->CR2 |= ADC_CR2_ALIGN;
 		break;
 	}
-	/* Se configura el alineamiento a la derecha */
+		/* Se configura el alineamiento a la derecha */
 	case ALIGNMENT_RIGHT: {
 		ADC1->CR2 &= ~ADC_CR2_ALIGN;
 		break;
 	}
 	default: {
-		ADC1->CR2 &= ~ADC_CR2_ALIGN;	// Por predeterminado, queda alineado a la derecha (right)
+		ADC1->CR2 &= ~ADC_CR2_ALIGN;// Por predeterminado, queda alineado a la derecha (right)
 		break;
 	}
 	}
 
 }	// Fin de la configuración del alineamiento
 
-
 /*
  * Relacionando con el valor del tiempo de carga del capacitor HOLD
  */
-static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
+static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig) {
 
 	/* Limpiamos los registros del Sampling Time Register ADC1->SMPR1 Y ADC1->SMPR2 */
 
 	/* Obtenemos el canal para el que queremos configurar el valor del Sampling */
-	switch(adcConfig->channel){
+	switch (adcConfig->channel) {
 	case CHANNEL_0: {
 		/* Limpiamos el registro correspondiente al Sampling del Canal 0 */
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP0;
 
 		// Configuramos para el Canal 0
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP0;		// 0b000
 			break;
@@ -216,7 +210,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP1;
 
 		// Configuramos para el Canal 1
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP1;		// 0b000
 			break;
@@ -261,7 +255,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP2;
 
 		// Configuramos para el Canal 2
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP2;		// 0b000
 			break;
@@ -306,7 +300,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP3;
 
 		// Configuramos para el Canal 3
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP3;		// 0b000
 			break;
@@ -351,7 +345,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP4;
 
 		// Configuramos para el Canal 4
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP4;		// 0b000
 			break;
@@ -396,7 +390,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP5;
 
 		// Configuramos para el Canal 5
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP5;		// 0b000
 			break;
@@ -441,7 +435,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP6;
 
 		// Configuramos para el Canal 6
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP6;		// 0b000
 			break;
@@ -486,7 +480,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP7;
 
 		// Configuramos para el Canal 7
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP7;		// 0b000
 			break;
@@ -531,7 +525,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP8;
 
 		// Configuramos para el Canal 8
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP8;		// 0b000
 			break;
@@ -576,7 +570,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR2 &= ~ADC_SMPR2_SMP9;
 
 		// Configuramos para el Canal 9
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR2 &= ~ADC_SMPR2_SMP9;		// 0b000
 			break;
@@ -621,7 +615,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR1 &= ~ADC_SMPR1_SMP10;
 
 		// Configuramos para el Canal 10
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR1 &= ~ADC_SMPR1_SMP10;		// 0b000
 			break;
@@ -666,7 +660,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR1 &= ~ADC_SMPR1_SMP11;
 
 		// Configuramos para el Canal 11
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR1 &= ~ADC_SMPR1_SMP11;		// 0b000
 			break;
@@ -711,7 +705,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR1 &= ~ADC_SMPR1_SMP12;
 
 		// Configuramos para el Canal 12
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR1 &= ~ADC_SMPR1_SMP12;		// 0b000
 			break;
@@ -756,7 +750,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR1 &= ~ADC_SMPR1_SMP13;
 
 		// Configuramos para el Canal 13
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR1 &= ~ADC_SMPR1_SMP13;		// 0b000
 			break;
@@ -801,7 +795,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR1 &= ~ADC_SMPR1_SMP14;
 
 		// Configuramos para el Canal 14
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR1 &= ~ADC_SMPR1_SMP14;		// 0b000
 			break;
@@ -846,7 +840,7 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 		ADC1->SMPR1 &= ~ADC_SMPR1_SMP15;
 
 		// Configuramos para el Canal 15
-		switch(adcConfig->samplingPeriod){
+		switch (adcConfig->samplingPeriod) {
 		case SAMPLING_PERIOD_3_CYCLES: {
 			ADC1->SMPR1 &= ~ADC_SMPR1_SMP15;		// 0b000
 			break;
@@ -890,12 +884,11 @@ static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig){
 
 }	// Fin de la función adc_set_sampling_and_hold()
 
-
 /*
  * Configura el número de elementos en la secuencia (un solo elemento en este caso)
  * Configura también cuál es el canal que adquiere la señal ADC
  */
-static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig){
+static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig) {
 
 	/* De momento como sólo usamos un canal, lo configuramos para que sea el
 	 * primer canal de al secuencia
@@ -909,22 +902,21 @@ static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig){
 	/* Para configurar el CanalX en la posición 1 de la secuencia. Escribimos el número del canal
 	 * en el registro correspondiente a la posición de la secuencia que queremos que ocupe
 	 */
+	ADC1->SQR3 &= ~(0b11111 << ADC_SQR3_SQ1_Pos); // Limpiamos los bits de la secuencia 1
 	ADC1->SQR3 |= (adcConfig->channel << ADC_SQR3_SQ1_Pos); // Se haría similar para las demás posiciones de la secuencia
 
-
 }
-
 
 /*
  * Configura el enable de las interrupciones y la activación del NVIC
  */
-static void adc_config_interrupt(ADC_Config_t *adcConfig){
+static void adc_config_interrupt(ADC_Config_t *adcConfig) {
 
 	/*
 	 * Activamos/Desactivamos las interrupciones debido a la finalización de una conversión
 	 * simple o de una secuencia
 	 */
-	switch(adcConfig->interrupState){
+	switch (adcConfig->interrupState) {
 	case ADC_INT_ENABLE: {
 		// Activamos las interrupciones del ADC debidas a conversiones
 		ADC1->CR1 |= ADC_CR1_EOCIE;
@@ -951,80 +943,66 @@ static void adc_config_interrupt(ADC_Config_t *adcConfig){
 
 }	// Fin de la función adc_config_interrupt
 
-
 /*
  * Controla la activación y desactivación del módulo ADC desde el
  * registro CR2 del ADC
  */
-void adc_peripheralOnOFF(uint8_t state){
+void adc_peripheralOnOFF(uint8_t state) {
 
-	if(state == ADC_ON){
+	if (state == ADC_ON) {
 		// Activamos el módulo ADC
 		ADC1->CR2 |= ADC_CR2_ADON;
-	}
-	else{
+	} else {
 		// Desactivamos el módulo ADC
 		ADC1->CR2 &= ~ADC_CR2_ADON;
 	}
 
 }
 
-
 /*
  * Aquí activamos o desactivamos el Scan Mode.
  * Funciona de la mano con la secuencia de varios canales.
  * No es necesario para el caso de un canal simple
  */
-void adc_ScanMode(uint8_t state){
+void adc_ScanMode(uint8_t state) {
 
-	if(state == SCAN_ON){
+	if (state == SCAN_ON) {
 		// Activamos el Scan mode en el CR1
 		ADC1->CR1 |= ADC_CR1_SCAN;
-	}
-	else{
+	} else {
 		// Desactivamos el Scan mode
 		ADC1->CR1 &= ~ADC_CR1_SCAN;
 	}
 
 }
 
-
 /*
  * Función que inicia la conversión ADC simple
  */
-void adc_StartSingleConv(void){
+void adc_StartSingleConv(void) {
 
-	if(ADC1->CR2 & ADC_CR2_ADON){
-		// Encendemos la conversión simple solo si está encendido el ADC
-		ADC1->CR2 |= ADC_CR2_SWSTART; // Realiza una única conversión y se detiene automáticamente
-	}
-	else{
-		__NOP();
-	}
+	ADC1->CR2 &= ~ADC_CR2_CONT;
+	// Encendemos la conversión simple solo si está encendido el ADC
+	ADC1->CR2 |= ADC_CR2_SWSTART; // Realiza una única conversión y se detiene automáticamente
+
 }
-
 
 /*
  * Función de inicia la conversión ADC continua
  */
-void adc_StartContinuousConv(void){
+void adc_StartContinuousConv(void) {
 
-	if(ADC1->CR2 & ADC_CR2_ADON){
-		// Permitir que el proceso de conversión continua solo si está encendido el ADC
-		ADC1->CR2 |= ADC_CR2_CONT;
-		// Encendemos la conversión
-		ADC1->CR2 |= ADC_CR2_SWSTART;
-	}
-	else{
-		__NOP();
-	}
+	// Permitir que el proceso de conversión continua solo si está encendido el ADC
+	ADC1->CR2 |= ADC_CR2_CONT;
+	// Encendemos la conversión
+	ADC1->CR2 |= ADC_CR2_SWSTART;
+
 }
-
 
 /*
  * Función que detiene la conversión ADC continua
  */
-void adc_StopContinuousConv(void){
+void adc_StopContinuousConv(void) {
 
 	// Detenemos el proceso de conversión continua, cambiando a modo de conversión simple
 	ADC1->CR2 &= ~ADC_CR2_CONT;
@@ -1033,155 +1011,152 @@ void adc_StopContinuousConv(void){
 
 }
 
-
 /*
  * Función que retorna el último dato adquirido por el ADC
  */
-uint16_t adc_GetValue(void){
-
-	// Guardamos el valor del DR (Data Register) en una variable
-	adcRawData = ADC1->DR;	/* 	Aunque la variable es de 16 bits y el
-								Data Register es de 32, los 16 bits menos
-								significativos del final no importan */
+uint16_t adc_GetValue(void) {
 	return adcRawData;
 }
-
 
 /*
  * Esta es la ISR de la interrupción por conversión ADC
  */
-void ADC_IRQHandler(void){
+void ADC_IRQHandler(void) {
 
-	// Bajamos a bandera, indicando que ya se está atendiendo la interrupción
-	ADC1->SR &= ~ADC_SR_EOC;
+	if (ADC1->SR & ADC_SR_EOC) {
+//		// Bajamos a bandera, indicando que ya se está atendiendo la interrupción
+//		ADC1->SR &= ~ADC_SR_EOC;
 
-	// Se llama la función CallBack que atiende la interrupción
-	adc_CompleteCallback();
+		// Guardamos el valor del DR (Data Register) en una variable
+		adcRawData = ADC1->DR; /* 	Aunque la variable es de 16 bits y el
+		 Data Register es de 32, los 16 bits menos
+		 significativos del final no importan */
+
+		// Se llama la función CallBack que atiende la interrupción
+		adc_CompleteCallback();
+	}
 }
 
-__attribute__((weak)) void adc_CompleteCallback(void){
+__attribute__((weak)) void adc_CompleteCallback(void) {
 	__NOP();
 }
-
 
 /*
  * Esta función configura los pines que deseamos que funcionen con ADC
  */
-void adc_ConfigAnalogPin(uint8_t adcChannel){
+void adc_ConfigAnalogPin(uint8_t adcChannel) {
 
 	//Configuramos cada Pin independientemente, según el canal seleccionado
-	switch(adcChannel){
+	switch (adcChannel) {
 	case CHANNEL_0: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_0;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_0;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_1: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_1;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_1;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_2: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_2;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_2;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_3: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_3;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_3;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_4: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_4;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_4;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_5: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_5;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_5;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_6: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_6;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_6;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_7: {
-		handlerADCPin.pGPIOx					= GPIOA;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_7;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOA;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_7;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_8: {
-		handlerADCPin.pGPIOx					= GPIOB;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_0;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOB;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_0;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_9: {
-		handlerADCPin.pGPIOx					= GPIOB;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_1;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOB;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_1;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_10: {
-		handlerADCPin.pGPIOx					= GPIOC;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_0;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_0;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_11: {
-		handlerADCPin.pGPIOx					= GPIOC;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_1;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_1;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_12: {
-		handlerADCPin.pGPIOx					= GPIOC;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_2;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_2;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_13: {
-		handlerADCPin.pGPIOx					= GPIOC;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_3;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_3;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_14: {
-		handlerADCPin.pGPIOx					= GPIOC;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_4;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_4;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
 	case CHANNEL_15: {
-		handlerADCPin.pGPIOx					= GPIOC;
-		handlerADCPin.pinConfig.GPIO_PinNumber	= PIN_5;
-		handlerADCPin.pinConfig.GPIO_PinMode	= GPIO_MODE_ANALOG;
+		handlerADCPin.pGPIOx = GPIOC;
+		handlerADCPin.pinConfig.GPIO_PinNumber = PIN_5;
+		handlerADCPin.pinConfig.GPIO_PinMode = GPIO_MODE_ANALOG;
 		break;
 	}
-	default:{
+	default: {
 		__NOP();
 		break;
 	}
+
 	}
-
+	gpio_Config(&handlerADCPin);
 }
-
 
 /*
  * Configuramos para hacer conversiones en múltiples canales
  * y con un orden específico (secuencia)
  */
-
-
 
 /*
  * Configuramos para Trigger externo
