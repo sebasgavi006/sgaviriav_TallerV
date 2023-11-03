@@ -7,6 +7,7 @@
  **/
 
 #include <stdint.h>
+#include <string.h>
 #include "stm32f4xx.h"
 #include "stm32_assert.h"
 #include "gpio_driver_hal.h"
@@ -25,6 +26,7 @@ GPIO_Handler_t pinTx = {0};	// Pin para la transmisión serial
 GPIO_Handler_t pinRx = {0};	// Pin para la recepción serial
 rxDataUsart received_USARTx = {0};
 uint8_t sendMsg = 0;
+uint8_t flagConv = 0;
 char bufferData[64] = {0};
 
 // Configuración de la conversión análogo-digital
@@ -48,27 +50,36 @@ int main(void){
 	while(1){
 		if(sendMsg){
 			sendMsg = 0; // Bajamos la bandera
-			usart_WriteMsg(&commSerial, "Hello World! \n\r");
+//			usart_WriteMsg(&commSerial, "Hello World! \n\r");
 		}
+
 		if(received_USARTx.rxData_USART2){ // Si no está vacía la variable que almacena los datos recibidos
 			if(received_USARTx.rxData_USART2 == 'p'){
 				usart_WriteMsg(&commSerial, "Testing, Testing!!\n\r");
 			}
 
 			if(received_USARTx.rxData_USART2 == 's'){
-				usart_WriteMsg(&commSerial, "make simple ADC\n\r");
+				usart_WriteMsg(&commSerial, "Make simple ADC\n\r");
+				adc_StartSingleConv();
 			}
 
 			if(received_USARTx.rxData_USART2 == 'C'){
-				usart_WriteMsg(&commSerial, "make continuous ADC\n\r");
+				usart_WriteMsg(&commSerial, "Make continuous ADC\n\r");
 				adc_StartContinuousConv();
 			}
 
 			if(received_USARTx.rxData_USART2 == 'S'){
-				usart_WriteMsg(&commSerial, "stop continuous ADC\n\r");
+				usart_WriteMsg(&commSerial, "Stop continuous ADC\n\r");
 				adc_StopContinuousConv();
 			}
 			received_USARTx.rxData_USART2 = '\0';
+		}
+
+		if(flagConv){
+			flagConv = 0; // Bajamos la bandera de la conversión
+			sprintf(bufferData, "Conversion ADC: %u\n\r\n\r", potenciometro.adcData);
+			usart_WriteMsg(&commSerial, bufferData);
+
 		}
 
 	}
@@ -217,6 +228,7 @@ void usart2_RxCallback(void){
 }
 
 void adc_CompleteCallback(void){
+	flagConv = 1;
 	potenciometro.adcData = adc_GetValue();
 }
 
