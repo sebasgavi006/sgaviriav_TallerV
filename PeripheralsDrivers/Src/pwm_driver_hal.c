@@ -1,41 +1,43 @@
 /*
- * PwmDriver.c
+ * pwm_driver_hal.c
  *
- *  Created on: XXXX , 2022
- *      Author: namontoy
+ *  Created on: Nov 03, 2023
+ *      Author: sgaviriav
  */
-#include "PwmDriver.h"
 
-/**/
+#include "stm32f4xx.h"
+#include "pwm_driver_hal.h"
+
+/*
+ * Headers de las funciones privadas del PWM
+ */
+void timer_enable_clock_peripheral(PWM_Handler_t *ptrPwmHandler);
+
+
+
+/*
+ * Función para cargar las configuraciones desde el Handler del PWM
+ */
 void pwm_Config(PWM_Handler_t *ptrPwmHandler){
 
-	/* 1. Activar la señal de reloj del periférico requerido */
-	if(ptrPwmHandler->ptrTIMx == TIM2){
-		/* agregue acá su código */
-	}
-	else if(ptrPwmHandler->ptrTIMx == TIM3){
-		/* agregue acá su código */
-	}
-	/*... agregar los demas*/
-	else{
-		__NOP();
-	}
+	/* 1. Activar la señal de reloj del Timer requerido */
+	timer_enable_clock_peripheral(ptrPwmHandler);
 
-	/* 1. Cargamos la frecuencia deseada */
+	/* 2. Cargamos la frecuencia deseada */
 	setFrequency(ptrPwmHandler);
 
-	/* 2. Cargamos el valor del dutty-Cycle*/
-	setDuttyCycle(ptrPwmHandler);
+	/* 3. Cargamos el valor del dutty-Cycle*/
+	setDutyCycle(ptrPwmHandler);
 
-	/* 2a. Estamos en UP_Mode, el limite se carga en ARR y se comienza en 0 */
+	/* 3a. Estamos en UP_Mode, el limite se carga en ARR y se comienza en 0 */
 	/* agregue acá su código */
 
-	/* 3. Configuramos los bits CCxS del registro TIMy_CCMR1, de forma que sea modo salida
+	/* 4. Configuramos los bits CCxS del registro TIMy_CCMR1, de forma que sea modo salida
 	 * (para cada canal hay un conjunto CCxS)
 	 *
-	 * 4. Además, en el mismo "case" podemos configurar el modo del PWM, su polaridad...
+	 * 5. Además, en el mismo "case" podemos configurar el modo del PWM, su polaridad...
 	 *
-	 * 5. Y además activamos el preload bit, para que cada vez que exista un update-event
+	 * 6. Y además activamos el preload bit, para que cada vez que exista un update-event
 	 * el valor cargado en el CCRx será recargado en el registro "shadow" del PWM */
 	switch(ptrPwmHandler->config.channel){
 	case PWM_CHANNEL_1:{
@@ -69,11 +71,55 @@ void pwm_Config(PWM_Handler_t *ptrPwmHandler){
 		break;
 	}
 
-	/* 6. Activamos la salida seleccionada */
+	/* 7. Activamos la salida seleccionada */
 	enableOutput(ptrPwmHandler);
 
 	}// fin del switch-case
-}
+} //
+
+/* Función para activar la señal de reloj del Timer */
+void timer_enable_clock_peripheral(PWM_Handler_t *ptrPwmHandler){
+
+	 /* ===== NOTA IMPORTANTE =====
+	  * Los TIMERS tienen diferentes tamaño:
+	  *
+	  * ===== TIMERS 16 BITS =====
+	  * TIM3
+	  * TIM4
+	  * TIM9
+	  * TIM10
+	  * TIM11
+	  *
+	  * ===== TIMERS 32 BITS =====
+	  * TIM2 - TIM5
+	  * */
+
+	 if(ptrPwmHandler->ptrTIMx == TIM2){
+		 RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+	 }
+	 else if(ptrPwmHandler->ptrTIMx == TIM3){
+		 RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	 }
+	 else if(ptrPwmHandler->ptrTIMx == TIM4){
+		 RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
+	 }
+	 else if(ptrPwmHandler->ptrTIMx == TIM5){
+		 RCC->APB1ENR |= RCC_APB1ENR_TIM5EN;
+	 }
+	 else if(ptrPwmHandler->ptrTIMx == TIM9){
+		 RCC->APB2ENR |= RCC_APB2ENR_TIM9EN;
+	 }
+	 else if(ptrPwmHandler->ptrTIMx == TIM10){
+		 RCC->APB2ENR |= RCC_APB2ENR_TIM10EN;
+	 }
+	 else if(ptrPwmHandler->ptrTIMx == TIM11){
+		 RCC->APB2ENR |= RCC_APB2ENR_TIM11EN;
+	 }
+	 else{
+		 __NOP();
+	 }
+ } // Fin activar señal reloj Timers
+
 
 /* Función para activar el Timer y activar todo el módulo PWM */
 void startPwmSignal(PWM_Handler_t *ptrPwmHandler) {
@@ -129,12 +175,12 @@ void updateFrequency(PWM_Handler_t *ptrPwmHandler, uint16_t newFreq){
 }
 
 /* El valor del dutty debe estar dado en valores de %, entre 0% y 100%*/
-void setDuttyCycle(PWM_Handler_t *ptrPwmHandler){
+void setDutyCycle(PWM_Handler_t *ptrPwmHandler){
 
 	// Seleccionamos el canal para configurar su dutty
 	switch(ptrPwmHandler->config.channel){
 	case PWM_CHANNEL_1:{
-		ptrPwmHandler->ptrTIMx->CCR1 = ptrPwmHandler->config.duttyCicle;
+		ptrPwmHandler->ptrTIMx->CCR1 = ptrPwmHandler->config.dutyCycle;
 
 		break;
 	}
@@ -151,7 +197,7 @@ void setDuttyCycle(PWM_Handler_t *ptrPwmHandler){
 
 
 /* Función para actualizar el Dutty, funciona de la mano con setDuttyCycle */
-void updateDuttyCycle(PWM_Handler_t *ptrPwmHandler, uint16_t newDutty){
+void updateDutyCycle(PWM_Handler_t *ptrPwmHandler, uint16_t newDuty){
 	// Actualizamos el registro que manipula el dutty
     /* agregue acá su código */
 
