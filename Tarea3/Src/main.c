@@ -52,22 +52,23 @@ uint8_t flagMode = 0;		// Bandera del EXTI del Switch. Se asigna 0 para indicar 
 uint8_t flagTimer2 = 0; 	// Bandera del conmutador de los display. Con esta bandera encendemos y apagamos los displays.
 uint8_t flagData = 0;		// Bandera del EXTI del Encoder.
 uint8_t flagRx = 0;			// Bandera para indicar la recepción de la transmisión serial
+uint8_t flagConv = 0;		// Bandera para indicar la finalización de la conversión
 uint8_t sendMsg = 0;		// Bandera para mostrar la lectura del ADC cada 2 segundos
 
 // Constantes para identificar los 3 sensores
 enum
 {
-	SENSOR1	= 1,
-	SENSOR2 = 2,
-	SENSOR3 = 3
+	SENSOR1	= 1,	// Pin PC5 -> ADC_15
+	SENSOR2 = 2,	// Pin PA7 -> ADC_7
+	SENSOR3 = 3		// Pin PA6 -> ADC_6
 };
 
 // Constantes para establecer los canales de cada sensor
 enum
 {
-	SENSOR1_CH = CHANNEL_0,
-	SENSOR2_CH = CHANNEL_2,
-	SENSOR3_CH = CHANNEL_0
+	SENSOR1_CH = CHANNEL_15,
+	SENSOR2_CH = CHANNEL_7,
+	SENSOR3_CH = CHANNEL_6
 };
 
 // Constantes para los modos del Encoder (Resolución y Sensor)
@@ -165,6 +166,7 @@ void evaluate(void);
 int main(void)
 {
 	// Iniciamos con los contadores en valores preestablecidos
+
 	contadorSensor = SENSOR1;
 	contadorRes = RESOLUTION_6_BIT;
 	received_USARTx.rxData_USART6 = '\0';
@@ -175,6 +177,7 @@ int main(void)
 	flagData = 0;
 	sendMsg = 0;
 	flagRx = 0;
+	flagConv = 0;
 
 
 	// Cargamos la configuración de los periféricos
@@ -187,8 +190,6 @@ int main(void)
 		// Se atiende la interrupción del Timer2
 		if(flagTimer2){
 			flagTimer2 = 0; // Bajamos la bandera
-			displayMode();
-			gpio_TooglePin(&display2);
 		}
 
 
@@ -212,30 +213,31 @@ int main(void)
 				}
 
 				if(received_USARTx.rxData_USART6 == 'a'){
-
+					// Limpiamos el último de dato del ADC para actualizar
+					sensor.adcData = 0;
 					// Hace la evaluación para modificar los contadores
 					flagData = 1;
 					readData = 1;
-					evaluate();
 					if(flagMode == MODO_RESOLUCION){
-						sprintf(bufferData, "Resolucion: %u\n\r", contadorRes);
+						sprintf(bufferData, "Resolucion: %u\n\r", (3-contadorRes));
 						usart_WriteMsg(&usart6, bufferData);
 					}
 					else{
-						sprintf(bufferData, "Sensor: %u\n\r", contadorSensor);
+						sprintf(bufferData, "Sensor: %u\n\r", contadorSensor+1);
 						usart_WriteMsg(&usart6, bufferData);
 					}
 				}
 
 				if(received_USARTx.rxData_USART6 == 'd'){
-
+					// Limpiamos el último de dato del ADC para actualizar
+					sensor.adcData = 0;
 					// Hace la evaluación para modificar los contadores
 					flagData = 1;
 					readData = 0;
-					evaluate();
 					if(flagMode == MODO_RESOLUCION){
-						sprintf(bufferData, "Resolucion: %u\n\r", contadorRes);
+						sprintf(bufferData, "Resolucion: %u\n\r", (3-contadorRes));
 						usart_WriteMsg(&usart6, bufferData);
+
 					}
 					else{
 						sprintf(bufferData, "Sensor: %u\n\r", contadorSensor);
@@ -277,13 +279,21 @@ int main(void)
 			}
 
 		}
-
+		if(flagConv){
+			adc_StartSingleConv();
+			flagConv = 0; // Bajamos la bandera
+		}
 
 		// Se atiende la interrupción del Timer4
 		if(sendMsg){
 			sendMsg = 0; // Bajamos la bandera de envío del mensaje serial periódico
-			sprintf(bufferData, "Conversion: %u, Sensor: %u, Resolucion: %u \n\r", sensor.adcData, contadorSensor, contadorRes);
-			usart_WriteMsg(&usart6, bufferData);
+			adc_StartSingleConv();
+			if(sensor.adcData){
+				sprintf(bufferData, "Conversion: %u, Sensor: %u, Resolucion: %u \n\r", sensor.adcData, contadorSensor, 3-contadorRes);
+				usart_WriteMsg(&usart6, bufferData);
+				sensor.adcData = 0;
+			}
+
 		}
 
 
@@ -318,7 +328,7 @@ void systemConfig(void){
 	segmentoB.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
 	segmentoC.pGPIOx							= GPIOC;
-	segmentoC.pinConfig.GPIO_PinNumber			= PIN_3;
+	segmentoC.pinConfig.GPIO_PinNumber			= PIN_2;
 	segmentoC.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoC.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoC.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
@@ -332,7 +342,7 @@ void systemConfig(void){
 	segmentoD.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
 	segmentoE.pGPIOx							= GPIOC;
-	segmentoE.pinConfig.GPIO_PinNumber			= PIN_2;
+	segmentoE.pinConfig.GPIO_PinNumber			= PIN_1;
 	segmentoE.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoE.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoE.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
@@ -354,7 +364,7 @@ void systemConfig(void){
 
     // Falta configurar el punto
 	segmentoPunto.pGPIOx							= GPIOC;
-	segmentoPunto.pinConfig.GPIO_PinNumber			= PIN_0;
+	segmentoPunto.pinConfig.GPIO_PinNumber			= PIN_3;
 	segmentoPunto.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
 	segmentoPunto.pinConfig.GPIO_PinOutputType		= GPIO_OTYPE_PUSHPULL;
 	segmentoPunto.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
@@ -492,7 +502,7 @@ void systemConfig(void){
 	/* Configurando el TIMER3 para el Blinky (Timer de 16 bits)*/
 	blinkTimer3.pTIMx									= TIM3;
 	blinkTimer3.TIMx_Config.TIMx_Prescaler				= 16000;	// Genera incrementos de 1 ms
-	blinkTimer3.TIMx_Config.TIMx_Period					= 250;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (250 ms)
+	blinkTimer3.TIMx_Config.TIMx_Period					= 500;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (500 ms)
 	blinkTimer3.TIMx_Config.TIMx_mode					= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
 	blinkTimer3.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
 
@@ -506,7 +516,7 @@ void systemConfig(void){
 	/* Configurando el TIMER4 para mostrar un mensaje cada 2 segundos */
 	messageTimer4.pTIMx									= TIM4;
 	messageTimer4.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
-	messageTimer4.TIMx_Config.TIMx_Period				= 2000;		// Encendiendo y apagando el cristal cada 16ms, obtenemos aproximadamente 60 FPS
+	messageTimer4.TIMx_Config.TIMx_Period				= 2000;		// Para un intervalo de 2s
 	messageTimer4.TIMx_Config.TIMx_mode					= TIMER_UP_COUNTER;	// El Timer cuenta ascendente
 	messageTimer4.TIMx_Config.TIMx_InterruptEnable		= TIMER_INT_ENABLE;	// Se activa la interrupción
 
@@ -617,6 +627,10 @@ void modeRes(void){
 		gpio_WritePin(&segmentoA, RESET);
 		gpio_WritePin(&segmentoD, RESET);
 		gpio_WritePin(&segmentoG, RESET);
+
+		gpio_WritePin(&segmentoB, SET);
+		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoF, SET);
 		break;
 	}
 	case RESOLUTION_10_BIT:{
@@ -626,6 +640,10 @@ void modeRes(void){
 		gpio_WritePin(&segmentoA, SET);
 		gpio_WritePin(&segmentoD, RESET);
 		gpio_WritePin(&segmentoG, RESET);
+
+		gpio_WritePin(&segmentoB, SET);
+		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoF, SET);
 		break;
 	}
 	case RESOLUTION_8_BIT:{
@@ -635,6 +653,10 @@ void modeRes(void){
 		gpio_WritePin(&segmentoA, SET);
 		gpio_WritePin(&segmentoD, RESET);
 		gpio_WritePin(&segmentoG, SET);
+
+		gpio_WritePin(&segmentoB, SET);
+		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoF, SET);
 		break;
 	}
 	case RESOLUTION_6_BIT:{
@@ -644,6 +666,10 @@ void modeRes(void){
 		gpio_WritePin(&segmentoA, SET);
 		gpio_WritePin(&segmentoD, SET);
 		gpio_WritePin(&segmentoG, SET);
+
+		gpio_WritePin(&segmentoB, SET);
+		gpio_WritePin(&segmentoC, SET);
+		gpio_WritePin(&segmentoF, SET);
 		break;
 	}
 	default:{
@@ -770,17 +796,17 @@ void evaluate(void){
 	else{
 		if(readData == 1){
 			// Giro en sentido horario -> contadorRes AUMENTA
-			if(contadorRes == RESOLUTION_6_BIT){
-				contadorRes--;
-			}
-			contadorRes++;
-		}
-		else{
-			// Giro en sentido anti-horario -> contadorRes DISMINUYE
 			if(contadorRes == RESOLUTION_12_BIT){
 				contadorRes++;
 			}
 			contadorRes--;
+		}
+		else{
+			// Giro en sentido anti-horario -> contadorRes DISMINUYE
+			if(contadorRes == RESOLUTION_6_BIT){
+				contadorRes--;
+			}
+			contadorRes++;
 		}
 	}
 
@@ -823,7 +849,8 @@ void Timer3_Callback(void){
 void Timer2_Callback(void){
 	flagTimer2 = 1;
 	gpio_TooglePin(&display1);
-
+	displayMode();
+	gpio_TooglePin(&display2);
 }
 
 
@@ -840,6 +867,7 @@ void Timer4_Callback(void){
  * El Callback obtiene el dato recibido.
  */
 void usart6_RxCallback(void){
+	flagRx = 1;
 	received_USARTx.rxData_USART6 = usart6_getRxData();
 }
 
@@ -848,6 +876,7 @@ void usart6_RxCallback(void){
  * conversión ADC
  */
 void adc_CompleteCallback(void){
+	flagConv = 1;
 	sensor.adcData = adc_GetValue();
 }
 
