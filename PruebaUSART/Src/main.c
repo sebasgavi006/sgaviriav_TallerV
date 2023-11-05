@@ -118,9 +118,9 @@ void configPeripherals(void){
 	 *  - Usamos el PinA2 para TX
 	 */
 	pinTx.pGPIOx								= GPIOA;
-	pinTx.pinConfig.GPIO_PinNumber				= PIN_2;
+	pinTx.pinConfig.GPIO_PinNumber				= PIN_11;
 	pinTx.pinConfig.GPIO_PinMode				= GPIO_MODE_ALTFN;
-	pinTx.pinConfig.GPIO_PinAltFunMode			= AF7;
+	pinTx.pinConfig.GPIO_PinAltFunMode			= AF8;
 	pinTx.pinConfig.GPIO_PinPuPdControl			= GPIO_PUPDR_NOTHING;
 	pinTx.pinConfig.GPIO_PinOutputSpeed			= GPIO_OSPEED_FAST;
 
@@ -130,9 +130,9 @@ void configPeripherals(void){
 
 	/* - Usamos el PinA3 para RX */
 	pinRx.pGPIOx								= GPIOA;
-	pinRx.pinConfig.GPIO_PinNumber				= PIN_3;
+	pinRx.pinConfig.GPIO_PinNumber				= PIN_12;
 	pinRx.pinConfig.GPIO_PinMode				= GPIO_MODE_ALTFN;
-	pinRx.pinConfig.GPIO_PinAltFunMode			= AF7;
+	pinRx.pinConfig.GPIO_PinAltFunMode			= AF8;
 	pinRx.pinConfig.GPIO_PinPuPdControl			= GPIO_PUPDR_NOTHING;
 	pinRx.pinConfig.GPIO_PinOutputSpeed			= GPIO_OSPEED_FAST;
 
@@ -161,7 +161,7 @@ void configPeripherals(void){
 
 	// 4. ===== USARTS =====
 	/* Configurando el puerto serial USART2 */
-	commSerial.ptrUSARTx					= USART2;
+	commSerial.ptrUSARTx					= USART6;
 	commSerial.USART_Config.baudrate		= USART_BAUDRATE_115200;
 	commSerial.USART_Config.datasize		= USART_DATASIZE_8BIT;
 	commSerial.USART_Config.parity			= USART_PARITY_NONE;
@@ -194,8 +194,8 @@ void Timer2_Callback(void){
 	sendMsg = 1; // Levantamos una bandera para enviar mensajes en el Callback del USART
 }
 
-void usart2_RxCallback(void){
-	receivedChar = usart2_getRxData();
+void usart6_RxCallback(void){
+	receivedChar = usart6_getRxData();
 }
 
 
