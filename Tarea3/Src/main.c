@@ -222,7 +222,7 @@ int main(void)
 						usart_WriteMsg(&usart6, bufferData);
 					}
 					else{
-						sprintf(bufferData, "Cambiando de sensor con resolucion %u\n\r", contadorRes);
+						sprintf(bufferData, "Cambiando de sensor con resolucion %u\n\r", 3-contadorRes);
 						usart_WriteMsg(&usart6, bufferData);
 					}
 				}
@@ -240,7 +240,7 @@ int main(void)
 
 					}
 					else{
-						sprintf(bufferData, "Cambiando de sensor con resolucion %u\n\r", contadorRes);
+						sprintf(bufferData, "Cambiando de sensor con resolucion %u\n\r", 3-contadorRes);
 						usart_WriteMsg(&usart6, bufferData);
 					}
 				}
@@ -455,7 +455,7 @@ void systemConfig(void){
 	/* ===== Configuramos los pines RX y TX para la transmisión serial ===== */
 
 	/* Configurando los pines para el puerto serial mediante USART6
-	 *  - Usamos el PinA11 para TX
+	 *  - Usamos el PinA11 para TX (Se conecta al blanco)
 	 */
 	pinTx.pGPIOx								= GPIOA;
 	pinTx.pinConfig.GPIO_PinNumber				= PIN_11;
@@ -468,7 +468,7 @@ void systemConfig(void){
 	gpio_Config(&pinTx);
 
 
-	/* - Usamos el PinA12 para RX */
+	/* - Usamos el PinA12 para RX (Se conecta al verde) */
 	pinRx.pGPIOx								= GPIOA;
 	pinRx.pinConfig.GPIO_PinNumber				= PIN_12;
 	pinRx.pinConfig.GPIO_PinMode				= GPIO_MODE_ALTFN;
