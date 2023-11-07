@@ -52,7 +52,6 @@ uint8_t flagMode = 0;		// Bandera del EXTI del Switch. Se asigna 0 para indicar 
 uint8_t flagTimer2 = 0; 	// Bandera del conmutador de los display. Con esta bandera encendemos y apagamos los displays.
 uint8_t flagData = 0;		// Bandera del EXTI del Encoder.
 uint8_t flagRx = 0;			// Bandera para indicar la recepción de la transmisión serial
-uint8_t flagConv = 0;		// Bandera para indicar la finalización de la conversión
 uint8_t sendMsg = 0;		// Bandera para mostrar la lectura del ADC cada 2 segundos
 
 // Constantes para identificar los 3 sensores
@@ -136,10 +135,10 @@ char bufferData[64] = {0};
 
 /* ===== Headers de las funciones a utilizar en el main ===== */
 
-// Función para cargar las configuraciones de los periféricos
+// Función para cargar las configuraciones de los periféricos a utilizar
 void systemConfig(void);
 
-// Función para mostrar un número ingresado como parámetro, por medios de ambos display
+// Función para mostrar correctamente la resolución seleccionada y el sensor seleccionado en el display
 void displayMode(void);
 
 // Función para representar un numero_x en el 7-segmentos
@@ -151,12 +150,11 @@ void modeSensor(void);
 // Función para controlar los segmentos en el modo Resolución
 void modeRes(void);
 
-// Función para configurar el sensor cuando modifique desde el encoder o por transmisión serial
+// Función para configurar el sensor y la resolución cuando modifique desde el encoder o por transmisión serial
 void configSensor(ADC_Config_t sensorHandler, uint8_t canal, uint8_t resolucion);
 
-// Función para evaluar si se aumenta o disminuye el contador
+// Función para evaluar si se aumenta o disminuyen los contadores del sensor y la resolución
 void evaluate(void);
-
 
 
 
@@ -177,7 +175,6 @@ int main(void)
 	flagData = 0;
 	sendMsg = 0;
 	flagRx = 0;
-	flagConv = 0;
 
 
 	// Cargamos la configuración de los periféricos
@@ -205,6 +202,7 @@ int main(void)
 					usart_WriteMsg(&usart6, "¿Funciona? ¡Funciona!\n\r");
 				}
 
+				// Cambiamos entre los modos selección de Sensor y selección de resolución
 				if(received_USARTx.rxData_USART6 == 'm'){
 					flagMode ^= 1;
 					sprintf(bufferData, "Modo: %u\n\r", flagMode);
@@ -212,38 +210,41 @@ int main(void)
 
 				}
 
+				// Aumentamos en la selección actual
 				if(received_USARTx.rxData_USART6 == 'a'){
 					// Limpiamos el último de dato del ADC para actualizar
 					sensor.adcData = 0;
-					// Hace la evaluación para modificar los contadores
+					// Modificamos las banderas para que entre en la función de evaluación
 					flagData = 1;
-					readData = 1;
+					readData = 1;	// 1 significa que aumenta el contador
 					if(flagMode == MODO_RESOLUCION){
-						sprintf(bufferData, "Resolucion: %u\n\r", (3-contadorRes));
+						sprintf(bufferData, "Resolucion del sensor %u aumentada\n\r", contadorSensor);
 						usart_WriteMsg(&usart6, bufferData);
 					}
 					else{
-						sprintf(bufferData, "Sensor: %u\n\r", contadorSensor+1);
+						sprintf(bufferData, "Cambiando de sensor con resolucion %u\n\r", contadorRes);
 						usart_WriteMsg(&usart6, bufferData);
 					}
 				}
 
+				// Disminuimos en la selección actual
 				if(received_USARTx.rxData_USART6 == 'd'){
 					// Limpiamos el último de dato del ADC para actualizar
 					sensor.adcData = 0;
-					// Hace la evaluación para modificar los contadores
+					// Modificamos las banderas para que entre en la función de evaluación
 					flagData = 1;
-					readData = 0;
+					readData = 0;	// 0 significa que disminuye el contador
 					if(flagMode == MODO_RESOLUCION){
-						sprintf(bufferData, "Resolucion: %u\n\r", (3-contadorRes));
+						sprintf(bufferData, "Resolucion del sensor %u disminuida\n\r", contadorSensor);
 						usart_WriteMsg(&usart6, bufferData);
 
 					}
 					else{
-						sprintf(bufferData, "Sensor: %u\n\r", contadorSensor);
+						sprintf(bufferData, "Cambiando de sensor con resolucion %u\n\r", contadorRes);
 						usart_WriteMsg(&usart6, bufferData);
 					}
 				}
+				// Limpiamos el valor recibido por transmisión serial anteriormente
 				received_USARTx.rxData_USART6 = '\0';
 			}
 		}
@@ -279,12 +280,10 @@ int main(void)
 			}
 
 		}
-		if(flagConv){
-			adc_StartSingleConv();
-			flagConv = 0; // Bajamos la bandera
-		}
+
 
 		// Se atiende la interrupción del Timer4
+		// - Enviamos un mensaje cada 2 segundos del estado actual del dispositivo
 		if(sendMsg){
 			sendMsg = 0; // Bajamos la bandera de envío del mensaje serial periódico
 			adc_StartSingleConv();
@@ -362,7 +361,6 @@ void systemConfig(void){
 	segmentoG.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_MEDIUM;
 	segmentoG.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 
-    // Falta configurar el punto
 	segmentoPunto.pGPIOx							= GPIOC;
 	segmentoPunto.pinConfig.GPIO_PinNumber			= PIN_3;
 	segmentoPunto.pinConfig.GPIO_PinMode			= GPIO_MODE_OUT;
@@ -414,7 +412,7 @@ void systemConfig(void){
 	gpio_Config(&data);
 
 
-	/* ===== Configuramos de últimos los leds de estado, modo y los pines para conmutar los cristales del 7-segmentos ====== */
+	/* ===== Configuramos los leds de estado, modo y los pines para conmutar los cristales del 7-segmentos ====== */
 
 	/* Configurando el pin del stateLed */
 	stateLed.pGPIOx								= GPIOA;
@@ -456,7 +454,7 @@ void systemConfig(void){
 
 	/* ===== Configuramos los pines RX y TX para la transmisión serial ===== */
 
-	/* Configurando los pines para el puerto serial
+	/* Configurando los pines para el puerto serial mediante USART6
 	 *  - Usamos el PinA11 para TX
 	 */
 	pinTx.pGPIOx								= GPIOA;
@@ -483,6 +481,7 @@ void systemConfig(void){
 
 
 	/* ====== Configuramos las interrupciones externas (EXTI) ===== */
+
 	/* Condigurando EXTI0 */
 	exti0.pGPIOHandler				= &sw;
 	exti0.edgeType					= EXTERNAL_INTERRUPT_RISING_EDGE;	/* Configurando el pin del cristal1 (7-segmentos) */
@@ -499,6 +498,7 @@ void systemConfig(void){
 
 
 	/* ===== Configurando los TIMER ===== */
+
 	/* Configurando el TIMER3 para el Blinky (Timer de 16 bits)*/
 	blinkTimer3.pTIMx									= TIM3;
 	blinkTimer3.TIMx_Config.TIMx_Prescaler				= 16000;	// Genera incrementos de 1 ms
@@ -532,6 +532,7 @@ void systemConfig(void){
 
 
 	/* ===== Configurando el puerto serial USART6 ===== */
+
 	usart6.ptrUSARTx					= USART6;
 	usart6.USART_Config.baudrate		= USART_BAUDRATE_9600;
 	usart6.USART_Config.datasize		= USART_DATASIZE_8BIT;
@@ -540,7 +541,7 @@ void systemConfig(void){
 	usart6.USART_Config.mode			= USART_MODE_RXTX;
 	usart6.USART_Config.enableIntRX		= USART_RX_INTERRUP_ENABLE;
 
-	/* Cargamos la configuración de USART */
+	/* Cargamos la configuración del USART */
 	usart_Config(&usart6);
 
 	/*
@@ -552,7 +553,7 @@ void systemConfig(void){
 
 	/* ===== Configuramos los canales del ADC ===== */
 
-	// Configuramos el Sensor 1
+	// Configuramos el objeto Sensor que servirá para configurar cualquiera de los 3 potenciómetros
 	sensor.channel				= SENSOR1_CH;
 	sensor.resolution			= RESOLUTION_6_BIT;
 	sensor.dataAlignment		= ALIGNMENT_RIGHT;
@@ -682,7 +683,7 @@ void modeRes(void){
 
 
 /*
- * Función para configurar la resolución de acuerdo a la selección desde el Encoder o la transmisión serial
+ * Función para configurar la resolución o el sensor, de acuerdo a la selección desde el Encoder o la transmisión serial
  */
 void configSensor(ADC_Config_t sensorHandler, uint8_t canal, uint8_t resolucion){
 
@@ -690,7 +691,8 @@ void configSensor(ADC_Config_t sensorHandler, uint8_t canal, uint8_t resolucion)
 	sensorHandler.channel = canal;
 	sensorHandler.resolution = resolucion;
 	adc_ConfigSingleChannel(&sensorHandler);
-}
+
+} // Fin función configSensor()
 
 
 /*
@@ -876,7 +878,6 @@ void usart6_RxCallback(void){
  * conversión ADC
  */
 void adc_CompleteCallback(void){
-	flagConv = 1;
 	sensor.adcData = adc_GetValue();
 }
 
