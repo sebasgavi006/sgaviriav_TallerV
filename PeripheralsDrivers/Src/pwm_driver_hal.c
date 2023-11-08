@@ -30,7 +30,12 @@ void pwm_Config(PWM_Handler_t *ptrPwmHandler){
 	setDutyCycle(ptrPwmHandler);
 
 	/* 3a. Estamos en UP_Mode, el limite se carga en ARR y se comienza en 0 */
-	/* agregue acá su código */
+
+	// Configruamos el contador en Up-Count
+
+
+	// Cargamos el límite del contador (periodo) TIMx -> ARR
+	ptrPwmHandler->ptrTIMx->ARR = ptrPwmHandler->config.periodo;
 
 	/* 4. Configuramos los bits CCxS del registro TIMy_CCMR1, de forma que sea modo salida
 	 * (para cada canal hay un conjunto CCxS)
@@ -42,30 +47,60 @@ void pwm_Config(PWM_Handler_t *ptrPwmHandler){
 	switch(ptrPwmHandler->config.channel){
 	case PWM_CHANNEL_1:{
 		// Seleccionamos como salida el canal
-		/* agregue acá su código */
+		ptrPwmHandler->ptrTIMx->CCMR1 &= ~TIM_CCMR1_CC1S;
 
 		// Configuramos el canal como PWM
-		/* agregue acá su código */
+		ptrPwmHandler->ptrTIMx->CCMR1 &= ~TIM_CCMR1_OC1M; // Limpiamos el registro primero
+
+		/* Configuramos el PWM en mode 1, donde el contador aumenta hasta el valor ARR,
+		 * y la señal está en alto (1), y se pone en bajo cuando se alcanza el valor del CCR
+		 */
+		ptrPwmHandler->ptrTIMx->CCMR1 |= (0b110 << TIM_CCMR1_OC1M_Pos); // PWM - mode 1
 
 		// Activamos la funcionalidad de pre-load
-		/* agregue acá su código */
+		ptrPwmHandler->ptrTIMx->CCMR1 |= TIM_CCMR1_OC1PE;
 
 		break;
 	}
 
 	case PWM_CHANNEL_2:{
 		// Seleccionamos como salida el canal
-		/* agregue acá su código */
+		ptrPwmHandler->ptrTIMx->CCMR1 &= ~TIM_CCMR1_CC2S;
 
 		// Configuramos el canal como PWM
-		/* agregue acá su código */
+		ptrPwmHandler->ptrTIMx->CCMR1 &= ~TIM_CCMR1_OC2M; // Limpiamos el registro primero
+		ptrPwmHandler->ptrTIMx->CCMR1 |= (0b110 << TIM_CCMR1_OC2M_Pos); // PWM - mode 1
 
 		// Activamos la funcionalidad de pre-load
-		/* agregue acá su código */
+		ptrPwmHandler->ptrTIMx->CCMR1 |= TIM_CCMR1_OC2PE;
 		break;
 	}
 
-    /* agregue acá los otros dos casos */
+	case PWM_CHANNEL_3:{
+		// Seleccionamos como salida el canal
+		ptrPwmHandler->ptrTIMx->CCMR2 &= ~TIM_CCMR2_CC3S;
+
+		// Configuramos el canal como PWM
+		ptrPwmHandler->ptrTIMx->CCMR2 &= ~TIM_CCMR2_OC3M; // Limpiamos el registro primero
+		ptrPwmHandler->ptrTIMx->CCMR2 |= (0b110 << TIM_CCMR2_OC3M_Pos); // PWM - mode 1
+
+		// Activamos la funcionalidad de pre-load
+		ptrPwmHandler->ptrTIMx->CCMR2 |= TIM_CCMR2_OC3PE;
+		break;
+	}
+
+	case PWM_CHANNEL_4:{
+		// Seleccionamos como salida el canal
+		ptrPwmHandler->ptrTIMx->CCMR2 &= ~TIM_CCMR2_CC4S;
+
+		// Configuramos el canal como PWM
+		ptrPwmHandler->ptrTIMx->CCMR2 &= ~TIM_CCMR2_OC4M; // Limpiamos el registro primero
+		ptrPwmHandler->ptrTIMx->CCMR2 |= (0b110 << TIM_CCMR2_OC4M_Pos); // PWM - mode 1
+
+		// Activamos la funcionalidad de pre-load
+		ptrPwmHandler->ptrTIMx->CCMR2 |= TIM_CCMR2_OC4PE;
+		break;
+	}
 
 	default:{
 		break;
@@ -136,7 +171,7 @@ void enableOutput(PWM_Handler_t *ptrPwmHandler) {
 	switch (ptrPwmHandler->config.channel) {
 	case PWM_CHANNEL_1: {
 		// Activamos la salida del canal 1
-		/* agregue acá su código */
+		ptrPwmHandler->ptrTIMx->CCER |= TIMER_CCE
 		break;
 	}
 
@@ -157,11 +192,15 @@ void setFrequency(PWM_Handler_t *ptrPwmHandler){
 
 	// Cargamos el valor del prescaler, nos define la velocidad (en ns) a la cual
 	// se incrementa el Timer
-	/* agregue acá su código */
+	ptrPwmHandler->ptrTIMx->PSC = ptrPwmHandler->config.prescaler;	// Determina un valor de referencia para el tiempo
 
 	// Cargamos el valor del ARR, el cual es el límite de incrementos del Timer
 	// antes de hacer un update y reload.
-	/* agregue acá su código */
+	ptrPwmHandler->ptrTIMx->ARR = ptrPwmHandler->config.periodo;	// Determina cuántas unidades de tiempo pasan
+
+	/*
+	 * El producto PSC * ARR determina el periodo del PWM
+	 */
 }
 
 
@@ -177,10 +216,17 @@ void updateFrequency(PWM_Handler_t *ptrPwmHandler, uint16_t newFreq){
 /* El valor del dutty debe estar dado en valores de %, entre 0% y 100%*/
 void setDutyCycle(PWM_Handler_t *ptrPwmHandler){
 
+	/* Esta variable guardará la fracción del periodo que deseamos que esté activa
+	 * la señal (Duty-Cycle). Esto lo hacemos en términos del ARR
+	 */
+	uint8_t percentOfPeriod = 0;
+
 	// Seleccionamos el canal para configurar su dutty
 	switch(ptrPwmHandler->config.channel){
 	case PWM_CHANNEL_1:{
-		ptrPwmHandler->ptrTIMx->CCR1 = ptrPwmHandler->config.dutyCycle;
+		// Convertimos el porcentaje en términos del periodo
+		percentOfPeriod = (ptrPwmHandler->config.dutyCycle * ptrPwmHandler->config.periodo)
+		ptrPwmHandler->ptrTIMx->CCR1 = percentOfPeriod;
 
 		break;
 	}
