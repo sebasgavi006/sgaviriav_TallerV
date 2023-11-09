@@ -14,7 +14,6 @@
 void timer_enable_clock_peripheral(PWM_Handler_t *ptrPwmHandler);
 
 
-
 /*
  * Función para cargar las configuraciones desde el Handler del PWM
  */
@@ -162,6 +161,7 @@ void timer_enable_clock_peripheral(PWM_Handler_t *ptrPwmHandler){
 void startPwmSignal(PWM_Handler_t *ptrPwmHandler) {
 	// Activamos el Counter del Timer, el cual activa también el PWM
 	ptrPwmHandler->ptrTIMx->CR1 |= TIM_CR1_CEN;
+
 }
 
 
@@ -171,7 +171,6 @@ void stopPwmSignal(PWM_Handler_t *ptrPwmHandler) {
 	// Desactiva el Counter del Timer, y así mismo el módulo PWM
 	ptrPwmHandler->ptrTIMx->CR1 &= ~TIM_CR1_CEN;
 
-	// Quitamos la señal de reloj del Timer
 }
 
 
@@ -217,13 +216,13 @@ void enableOutput(PWM_Handler_t *ptrPwmHandler) {
  * */
 void setFrequency(PWM_Handler_t *ptrPwmHandler){
 
-	// Cargamos el valor del prescaler, nos define la velocidad (en ns) a la cual
-	// se incrementa el Timer
+	// Cargamos el valor del prescaler, nos define la velocidad (en ms) a la cual
+	// se incrementa el Timer. (Define la escala de tiempo. 1ms -> PSC = 16000 -> Signal Clock = 16 MHz
 	ptrPwmHandler->ptrTIMx->PSC = ptrPwmHandler->config.prescaler;	// Determina un valor de referencia para el tiempo
 
 	// Cargamos el valor del ARR, el cual es el límite de incrementos del Timer
 	// antes de hacer un update y reload.
-	ptrPwmHandler->ptrTIMx->ARR = ptrPwmHandler->config.periodo;	// Determina cuántas unidades de tiempo pasan
+	ptrPwmHandler->ptrTIMx->ARR = ptrPwmHandler->config.periodo;	// Determina cuántas unidades de tiempo pasan (Periodo)
 
 	/*
 	 * El producto PSC * ARR determina el periodo del PWM
@@ -232,35 +231,46 @@ void setFrequency(PWM_Handler_t *ptrPwmHandler){
 
 
 /* Función para actualizar la frecuencia, funciona de la mano con setFrequency */
-void updateFrequency(PWM_Handler_t *ptrPwmHandler, uint16_t newFreq){
+void updateFrequency(PWM_Handler_t *ptrPwmHandler, uint16_t newPeriod){
 
 	// Actualizamos el registro que manipula el periodo
-    ptrPwmHandler->config.periodo = newFreq;
+    ptrPwmHandler->config.periodo = newPeriod;
 
 	// Llamamos a la fucnión que cambia la frecuencia
 	setFrequency(ptrPwmHandler);
 }
 
 
-/* El valor del dutty debe estar dado en valores de %, entre 0% y 100%*/
+/* El valor del dutty es una fracción del valor del ARR.
+ * Se puede determinar porcentualmente como ( CCRx / ARR * 100 )
+ */
 void setDutyCycle(PWM_Handler_t *ptrPwmHandler){
-
-	/* Esta variable guardará la fracción del periodo que deseamos que esté activa
-	 * la señal (Duty-Cycle). Esto lo hacemos en términos del ARR
-	 */
-	uint8_t percentOfPeriod = 0;
 
 	// Seleccionamos el canal para configurar su dutty
 	switch(ptrPwmHandler->config.channel){
 	case PWM_CHANNEL_1:{
-		// Convertimos el porcentaje en términos del periodo
-		percentOfPeriod = (ptrPwmHandler->config.dutyCycle * ptrPwmHandler->config.periodo);
-		ptrPwmHandler->ptrTIMx->CCR1 = percentOfPeriod;
-
+		// Cargamos el valor del Duty Cycle en el registro CCR1
+		ptrPwmHandler->ptrTIMx->CCR1 = ptrPwmHandler->config.dutyCycle;
 		break;
 	}
 
-	/* agregue acá su código con los otros tres casos */
+	case PWM_CHANNEL_2:{
+		// Cargamos el valor del Duty Cycle en el registro CCR2
+		ptrPwmHandler->ptrTIMx->CCR2 = ptrPwmHandler->config.dutyCycle;
+		break;
+	}
+
+	case PWM_CHANNEL_3:{
+		// Cargamos el valor del Duty Cycle en el registro CCR3
+		ptrPwmHandler->ptrTIMx->CCR3 = ptrPwmHandler->config.dutyCycle;
+		break;
+	}
+
+	case PWM_CHANNEL_4:{
+		// Cargamos el valor del Duty Cycle en el registro CCR4
+		ptrPwmHandler->ptrTIMx->CCR4 = ptrPwmHandler->config.dutyCycle;
+		break;
+	}
 
 	default:{
 		break;
@@ -268,7 +278,7 @@ void setDutyCycle(PWM_Handler_t *ptrPwmHandler){
 
 	}// fin del switch-case
 
-}
+} // Fin de la función setDutyCycle()
 
 
 /* Función para actualizar el Dutty, funciona de la mano con setDuttyCycle */
