@@ -105,10 +105,11 @@ void pwm_Config(PWM_Handler_t *ptrPwmHandler){
 		break;
 	}
 
+	} //fin del switch-case
+
 	/* 7. Activamos la salida seleccionada */
 	enableOutput(ptrPwmHandler);
 
-	} //Ffin del switch-case
 
 } //Fin de la función de configuración
 
@@ -159,6 +160,9 @@ void timer_enable_clock_peripheral(PWM_Handler_t *ptrPwmHandler){
 
 /* Función para activar el Timer y activar todo el módulo PWM */
 void startPwmSignal(PWM_Handler_t *ptrPwmHandler) {
+	// Limpiamos el contador
+	ptrPwmHandler->ptrTIMx->CNT = 0;
+
 	// Activamos el Counter del Timer, el cual activa también el PWM
 	ptrPwmHandler->ptrTIMx->CR1 |= TIM_CR1_CEN;
 
