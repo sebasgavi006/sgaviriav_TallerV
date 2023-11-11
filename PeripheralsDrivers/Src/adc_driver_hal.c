@@ -959,6 +959,7 @@ void adc_peripheralOnOFF(uint8_t state) {
 
 }
 
+
 /*
  * Aquí activamos o desactivamos el Scan Mode.
  * Funciona de la mano con la secuencia de varios canales.
@@ -975,6 +976,7 @@ void adc_ScanMode(uint8_t state) {
 	}
 
 }
+
 
 /*
  * Función que inicia la conversión ADC simple
