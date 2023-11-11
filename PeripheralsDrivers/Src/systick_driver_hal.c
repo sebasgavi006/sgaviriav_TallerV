@@ -10,6 +10,7 @@
 
 
 static uint32_t countTicks = 0;
+static uint32_t startTick = 0; // Para la función de Delay
 
 /*
  * Cabeceras de las funciones privadas
@@ -21,7 +22,8 @@ static void systick_config_interrupt(Systick_Handler_t *pSystickHandler);
  */
 void systick_Config(Systick_Handler_t *pSystickHandler){
 
-	// La variable que cuenta los Ticks del sistema empieza en 0, para asegurarnos mejor
+	// La variable que cuenta los Ticks del sistema empieza en 0, para asegurarnos mejor.
+	// Con ella, podemos llevar una "Cuenta" del tiempo activo del sistema
 	countTicks = 0;
 
 	/*
@@ -29,7 +31,7 @@ void systick_Config(Systick_Handler_t *pSystickHandler){
 	 */
 
 	// Asignamos el valor del Reload cargado en la estructura de configuración, en el registro correspondiente
-	pSystickHandler->pSystick->LOAD = pSystickHandler->Systick_Config.Systick_Reload;
+	pSystickHandler->pSystick->LOAD = SYSTICK_PSC_1ms;
 
 	/*
 	 * 2. Limpiamos el valor actual del contador del Systick
@@ -92,7 +94,7 @@ void systick_SetState(Systick_Handler_t *pSystickHandler, uint8_t newState){
 /*
  * Devuelve la cantidad de Ticks (cuenta los ticks, o del tiempo según el Reload d)
  */
-uint32_t systick_GetTicks(void){
+uint64_t systick_GetTicks(void){
 	return countTicks;
 }
 
@@ -120,6 +122,32 @@ static void systick_config_interrupt(Systick_Handler_t *pSystickHandler){
 		NVIC_DisableIRQ(SysTick_IRQn);
 	}
 }
+
+
+/*
+ * Función para generar un Delay, es decir, una "pausa controlado del main", usando el SysTick.
+ * (El valor del Prescaler para que el tiempo cuente en intervalos de 1 ms, debe ser
+ * PSC -> 16000
+ */
+void systick_Delay_ms(uint32_t wait_time_ms){
+
+	// Obtenemos el Tick actual del contador
+	startTick = systick_GetTicks();
+
+	// Obtiene el valor de tiempo para comparar inicialmente
+	countTicks = systick_GetTicks();
+
+	/* Comparamos el valor de cada actualización, con el valor de referencia
+	 * startTick + wait_time_ms, para que entre en un ciclo hasta que pase
+	 * el intervalo de tiempo deseado
+	 */
+	while(countTicks < (startTick + (uint64_t)wait_time_ms)){
+		// Guardamos el valor de la cuenta actual
+		countTicks = systick_GetTicks();
+	}
+
+
+} // Fin systick_Delay_ms()
 
 
 __attribute__((weak)) void systick_Callback(void){

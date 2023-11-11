@@ -11,6 +11,11 @@
 #include <stdint.h>
 #include "stm32f4xx.h"
 
+#define SYSTICK_ADDRESS 	0xE000E010UL // Dirección exacta sin OFFSET a los registros del SysTick
+
+#define SYSTICK 			((SysTick_Type *) SYSTICK_ADDRESS)	// Definimos un puntero, que toma una estructura y la apunta a una dirección
+
+#define SYSTICK_PSC_1ms		16000	// El SysTick funciona a 1ms
 
 enum{
 	SYSTICK_OFF = 0,
@@ -42,7 +47,8 @@ typedef struct
 /* Funciones públicas del driver */
 void systick_Config(Systick_Handler_t *pSystickHandler);
 void systick_SetState(Systick_Handler_t *pSystickHandler, uint8_t newState);
-uint32_t systick_GetTicks();
+uint64_t systick_GetTicks();
+void systick_Delay_ms(uint32_t wait_time_ms);
 
 /* Esta función debe ser sobre-escrita en el main para que el sistema funcione */
 void systick_Callback(void);
