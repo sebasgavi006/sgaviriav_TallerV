@@ -74,6 +74,16 @@ enum{
 	SAMPLING_PERIOD_480_CYCLES = 0b111
 };
 
+// Posiciones para la secuencia de la opción multicanal del ADC
+enum{
+	PRIMERA_POSICION_SQR3 = 1,
+	ULTIMA_POSICION_SQR3 = 6,
+	PRIMERA_POSICION_SQR2 = 7,
+	ULTIMA_POSICION_SQR2 = 12,
+	PRIMERA_POSICION_SQR1 = 13,
+	ULTIMA_POSICION_SQR1 = 16
+};
+
 
 /*
  * ADC Config definition
@@ -97,6 +107,7 @@ typedef struct{
 
 /* Header definitions for the public functions of adc_driver_hal */
 void adc_ConfigSingleChannel(ADC_Config_t *adcConfig);
+void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length);
 void adc_ConfigAnalogPin(uint8_t adcChannel);
 void adc_CompleteCallback(void);
 void adc_StartSingleConv(void);

@@ -6,7 +6,9 @@
  */
 
 /* Importando las librerías */
-//#include "stm32f4xx.h"
+
+#include <stdint.h>
+#include "stm32f4xx.h"
 #include "stm32_assert.h"
 #include "gpio_driver_hal.h"
 #include "adc_driver_hal.h"
@@ -17,13 +19,15 @@ static void adc_set_resolution(ADC_Config_t *adcConfig);
 static void adc_set_alignment(ADC_Config_t *adcConfig);
 static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig);
 static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig);
+static void adc_set_sequence(ADC_Config_t *adcConfig[], uint8_t Length);
 static void adc_config_interrupt(ADC_Config_t *adcConfig);
 
 /* Variables y elementos que necesita internamente el driver para
  * funcionar adecuadamente
  * */
-GPIO_Handler_t handlerADCPin = { 0 };
+GPIO_Handler_t handlerADCPin = {0};
 uint16_t adcRawData = 0;
+
 
 /*
  * Función para configurar un solo canal del ADC
@@ -80,6 +84,77 @@ void adc_ConfigSingleChannel(ADC_Config_t *adcConfig) {
 	__enable_irq();
 
 }
+
+
+/*
+ * Función para configurar una secuencia de múltiples canales del ADC
+ */
+void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
+
+	/* 1. Configuramos el PinX para que cumpla la función del canal análogo deseado */
+	for(uint8_t i = 0; i < Length; i++){
+		adc_ConfigAnalogPin(adcConfig[i]->channel);
+	}
+
+	/* 2. Activamos la señal de reloj para el ADC */
+	adc_enable_clock_peripheral();
+
+	// Limpiamos los registros antes de comenzar a configurar
+	ADC1->CR1 = 0;
+	ADC1->CR2 = 0;
+
+	/* 3. Resolución de ADC1
+	 * Basta con configurar la resolución del primer sensor, pues es la
+	 * misma para todo el módulo ADC.
+	 */
+	adc_set_resolution(adcConfig[0]);
+
+	/* 4. Configuramos el modo Scan como activado */
+	adc_ScanMode(SCAN_ON);
+
+	/* 5. Configuramos la alineación de los datos (derecha o izquierda) */
+	adc_set_alignment(adcConfig[0]);
+
+	/* 6. Desactivamos el "continuous mode" */
+	adc_StopContinuousConv();
+
+
+	/* Comenzamos la configuración de ADC1 */
+	/* 7. Se configura el sampling (muestreo) para cada canal */
+
+	for(uint8_t i=0; i < Length; i++){
+		adc_set_sampling_and_hold(adcConfig[0]);
+	}
+
+	/* 8. Configuramos la secuencia y cuantos elementos hay en la secuencia */
+	adc_set_sequence(adcConfig, Length);
+
+	/* 9. Configuramos el prescaler del ADC en 2:1 (el más rápido que se puede tener)
+	 * (Corresponde a la división más pequeña)
+	 */
+	ADC->CCR &= ~ADC_CCR_ADCPRE;
+
+	/* 10. Desactivamos las interrupciones globales */
+	__disable_irq();
+
+	/* 11. Configuramos la interrupción (si se encuentra activa), además de
+	 * inscribir/remover la interrupción en el NVIC
+	 */
+	adc_config_interrupt(adcConfig[0]);
+
+	/* 12. Seleccionamos la opción para lanzar la interrupción cada que uno de los
+	 * canales de la secuencia termine la conversión
+	 */
+	ADC1->CR2 |= ADC_CR2_EOCS;
+
+	/* 13. Activamos el modulo ADC */
+	adc_peripheralOnOFF(ADC_ON);
+
+	/* 14. Activamos las interrupciones globales */
+	__enable_irq();
+
+} // Fin de la función adc_ConfigMultiChannel()
+
 
 /*
  * Enable Clock for ADC peripheral
@@ -907,6 +982,56 @@ static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig) {
 
 }
 
+
+/*
+ * Configuramos la secuencia de la conversión, de acuerdo al orden del arreglo que se
+ * debe definir en el main, cargando las configuraciones individuales de cada "sensor"
+ * que va a perternecer al arreglo
+ */
+static void adc_set_sequence(ADC_Config_t *adcConfig[], uint8_t Length){
+
+	/*
+	 * Ponemos el valor del Largo de la secuencia en el registro correspondiente
+	 */
+
+	// 1. Primero, limpiamos todos los registros de la secuencia
+	ADC1->SQR1 = 0;
+	ADC1->SQR2 = 0;
+	ADC1->SQR3 = 0;
+
+	// Ponemos la cantidad de canales que conforman la secuencia (Length - 1)
+	ADC1->SQR1 |= ((Length - 1) << ADC_SQR1_L_Pos);
+
+	/*
+	 * Cargamos el valor de cada Canal de acuerdo a la posición de los diferentes
+	 * sensores en el arreglo
+	 */
+	for(uint8_t i = 0; i < Length; i++){
+
+		uint8_t posicion = i + 1; // Esta variable me permite identificar la posicion de la secuencia
+
+		/*
+		 * Miramos en qué parte de la secuencia vamos, para asignar los valores en el
+		 * registro ADC1->SQR3, ADC1->SQR2 ó ADC1->SQR1
+		 */
+
+		// Posiciones de la secuencia 1-6, registro ADC1->SQR3
+		if(posicion <= ULTIMA_POSICION_SQR3){
+			// Las posiciones en el registro se mueven cada 5 bits
+			ADC1->SQR3 |= ((adcConfig[i]->channel) << (ADC_SQR3_SQ2_Pos * i)); // Se haría similar para las demás posiciones de la secuencia
+		}
+		// Posiciones de la secuencia 7-12, registro ADC1->SQR2
+		else if(posicion >= PRIMERA_POSICION_SQR2  && posicion <= ULTIMA_POSICION_SQR2){
+			ADC1->SQR2 |= ((adcConfig[i]->channel) << (ADC_SQR2_SQ8_Pos * (i - ULTIMA_POSICION_SQR3)));
+		}
+		// Posiciones de la secuencia 13-16
+		else if(posicion >= PRIMERA_POSICION_SQR1){
+			ADC1->SQR1 |= ((adcConfig[i]->channel) << (ADC_SQR1_SQ14_Pos * (i - ULTIMA_POSICION_SQR2)));
+		}
+	}
+
+} // Fin adc_set_sequence()
+
 /*
  * Configura el enable de las interrupciones y la activación del NVIC
  */
@@ -942,6 +1067,7 @@ static void adc_config_interrupt(ADC_Config_t *adcConfig) {
 	}
 
 }	// Fin de la función adc_config_interrupt
+
 
 /*
  * Controla la activación y desactivación del módulo ADC desde el

@@ -268,6 +268,7 @@ uint8_t i2c_ReadSingleRegister(I2C_Handler_t *ptrHandlerI2C, uint8_t regToRead){
 
 	/* 9. La función devuelve el dato enviado por el slave */
 	return auxRead;
+
 } // Fin de i2c_ReadSingleRegister
 
 
@@ -288,7 +289,7 @@ void i2c_WriteSingleRegister(I2C_Handler_t *ptrHandlerI2C, uint8_t regToRead, ui
 	/* 4. Enviamos el valor que deseamos escribir en el registro seleccionado */
 	i2c_SendDataByte(ptrHandlerI2C, newValue);
 
-	/* 8. Generamos la condición Stop, para que el slave se detenga después de 1 byte */
+	/* 5. Generamos la condición Stop, para que el slave se detenga después de 1 byte */
 	i2c_StopTransaction(ptrHandlerI2C);
 
 
