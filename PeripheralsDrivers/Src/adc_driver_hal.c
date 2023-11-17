@@ -91,7 +91,8 @@ void adc_ConfigSingleChannel(ADC_Config_t *adcConfig) {
  */
 void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
 
-	/* 1. Configuramos el PinX para que cumpla la función del canal análogo deseado */
+	/* 1. Configuramos el PinX para que cumpla la función del canal análogo deseado.
+	 * Esto se hace para cada pin de cada canal */
 	for(uint8_t i = 0; i < Length; i++){
 		adc_ConfigAnalogPin(adcConfig[i]->channel);
 	}
@@ -109,7 +110,7 @@ void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
 	 */
 	adc_set_resolution(adcConfig[0]);
 
-	/* 4. Configuramos el modo Scan como activado */
+	/* 4. Configuramos el Modo Scan como activado */
 	adc_ScanMode(SCAN_ON);
 
 	/* 5. Configuramos la alineación de los datos (derecha o izquierda) */
@@ -120,8 +121,8 @@ void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
 
 
 	/* Comenzamos la configuración de ADC1 */
-	/* 7. Se configura el sampling (muestreo) para cada canal */
 
+	/* 7. Se configura el sampling (muestreo) para cada canal */
 	for(uint8_t i=0; i < Length; i++){
 		adc_set_sampling_and_hold(adcConfig[0]);
 	}
@@ -989,10 +990,6 @@ static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig) {
  * que va a perternecer al arreglo
  */
 static void adc_set_sequence(ADC_Config_t *adcConfig[], uint8_t Length){
-
-	/*
-	 * Ponemos el valor del Largo de la secuencia en el registro correspondiente
-	 */
 
 	// 1. Primero, limpiamos todos los registros de la secuencia
 	ADC1->SQR1 = 0;
