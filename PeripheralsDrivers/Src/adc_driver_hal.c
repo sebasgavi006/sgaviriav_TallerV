@@ -12,6 +12,7 @@
 #include "stm32_assert.h"
 #include "gpio_driver_hal.h"
 #include "adc_driver_hal.h"
+#include "pwm_driver_hal.h"
 
 /* ===== Headers for private functions ===== */
 static void adc_enable_clock_peripheral(void);
@@ -19,7 +20,7 @@ static void adc_set_resolution(ADC_Config_t *adcConfig);
 static void adc_set_alignment(ADC_Config_t *adcConfig);
 static void adc_set_sampling_and_hold(ADC_Config_t *adcConfig);
 static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig);
-static void adc_set_sequence(ADC_Config_t *adcConfig[], uint8_t Length);
+static void adc_set_sequence(ADC_Config_t *adcConfig, uint8_t Length);
 static void adc_config_interrupt(ADC_Config_t *adcConfig);
 
 /* Variables y elementos que necesita internamente el driver para
@@ -89,12 +90,12 @@ void adc_ConfigSingleChannel(ADC_Config_t *adcConfig) {
 /*
  * Función para configurar una secuencia de múltiples canales del ADC
  */
-void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
+void adc_ConfigMultiChannel(ADC_Config_t *adcConfig, uint8_t Length) {
 
 	/* 1. Configuramos el PinX para que cumpla la función del canal análogo deseado.
 	 * Esto se hace para cada pin de cada canal */
 	for(uint8_t i = 0; i < Length; i++){
-		adc_ConfigAnalogPin(adcConfig[i]->channel);
+		adc_ConfigAnalogPin(adcConfig[i].channel);
 	}
 
 	/* 2. Activamos la señal de reloj para el ADC */
@@ -108,13 +109,13 @@ void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
 	 * Basta con configurar la resolución del primer sensor, pues es la
 	 * misma para todo el módulo ADC.
 	 */
-	adc_set_resolution(adcConfig[0]);
+	adc_set_resolution(adcConfig);
 
 	/* 4. Configuramos el Modo Scan como activado */
 	adc_ScanMode(SCAN_ON);
 
 	/* 5. Configuramos la alineación de los datos (derecha o izquierda) */
-	adc_set_alignment(adcConfig[0]);
+	adc_set_alignment(adcConfig);
 
 	/* 6. Desactivamos el "continuous mode" */
 	adc_StopContinuousConv();
@@ -124,7 +125,7 @@ void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
 
 	/* 7. Se configura el sampling (muestreo) para cada canal */
 	for(uint8_t i=0; i < Length; i++){
-		adc_set_sampling_and_hold(adcConfig[0]);
+		adc_set_sampling_and_hold(&adcConfig[i]);
 	}
 
 	/* 8. Configuramos la secuencia y cuantos elementos hay en la secuencia */
@@ -141,7 +142,7 @@ void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length) {
 	/* 11. Configuramos la interrupción (si se encuentra activa), además de
 	 * inscribir/remover la interrupción en el NVIC
 	 */
-	adc_config_interrupt(adcConfig[0]);
+	adc_config_interrupt(adcConfig);
 
 	/* 12. Seleccionamos la opción para lanzar la interrupción cada que uno de los
 	 * canales de la secuencia termine la conversión
@@ -989,7 +990,8 @@ static void adc_set_one_channel_sequence(ADC_Config_t *adcConfig) {
  * debe definir en el main, cargando las configuraciones individuales de cada "sensor"
  * que va a perternecer al arreglo
  */
-static void adc_set_sequence(ADC_Config_t *adcConfig[], uint8_t Length){
+static void adc_set_sequence(ADC_Config_t *adcConfig, uint8_t Length){
+
 
 	// 1. Primero, limpiamos todos los registros de la secuencia
 	ADC1->SQR1 = 0;
@@ -1015,19 +1017,133 @@ static void adc_set_sequence(ADC_Config_t *adcConfig[], uint8_t Length){
 		// Posiciones de la secuencia 1-6, registro ADC1->SQR3
 		if(posicion <= ULTIMA_POSICION_SQR3){
 			// Las posiciones en el registro se mueven cada 5 bits
-			ADC1->SQR3 |= ((adcConfig[i]->channel) << (ADC_SQR3_SQ2_Pos * i)); // Se haría similar para las demás posiciones de la secuencia
+			ADC1->SQR3 |= ((adcConfig[i].channel) << (ADC_SQR3_SQ2_Pos * i)); // Se haría similar para las demás posiciones de la secuencia
 		}
 		// Posiciones de la secuencia 7-12, registro ADC1->SQR2
 		else if(posicion >= PRIMERA_POSICION_SQR2  && posicion <= ULTIMA_POSICION_SQR2){
-			ADC1->SQR2 |= ((adcConfig[i]->channel) << (ADC_SQR2_SQ8_Pos * (i - ULTIMA_POSICION_SQR3)));
+			ADC1->SQR2 |= ((adcConfig[i].channel) << (ADC_SQR2_SQ8_Pos * (i - ULTIMA_POSICION_SQR3)));
 		}
 		// Posiciones de la secuencia 13-16
 		else if(posicion >= PRIMERA_POSICION_SQR1){
-			ADC1->SQR1 |= ((adcConfig[i]->channel) << (ADC_SQR1_SQ14_Pos * (i - ULTIMA_POSICION_SQR2)));
+			ADC1->SQR1 |= ((adcConfig[i].channel) << (ADC_SQR1_SQ14_Pos * (i - ULTIMA_POSICION_SQR2)));
 		}
 	}
 
 } // Fin adc_set_sequence()
+
+
+/*
+ * Función para configurar el Trigger Externo.
+ * Este puede ser producido idealmente por una señal PWM, la cual se encarga de ejecutar
+ * el inicio de las conversiones ADC y determina la frecuencia de muestreo del ADC
+ */
+void adc_ExternalTrigger(PWM_Handler_t *handlerPWM){
+
+	/* 1. Activamos el Trigger Externo para laznar conversiones con el PWM */
+	// Limpiamos el registro
+	ADC1->CR2 &= ~(ADC_CR2_EXTEN);
+
+	// Definimos el Trigger por Rising Edge
+	ADC1->CR2 |= ADC_CR2_EXTEN_0;
+
+	/* 2. Seleccionamos cual es la fuente del Triger (Config del PWM) */
+	// Limpiamos el registro
+	ADC1->CR2 &= ~(ADC_CR2_EXTSEL);
+
+	// Revisamos cuál Timer genera el PWM
+	if(handlerPWM->ptrTIMx == TIM1){
+		// Vemos cuál Canal del Timer genera el PWM
+		switch(handlerPWM->config.channel){
+		case CHANNEL_1:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM1_CC1 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		case CHANNEL_2:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM1_CC2 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		case CHANNEL_3:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM1_CC3 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		default: {
+			__NOP();
+			break;
+		}
+		}
+	}
+
+	else if(handlerPWM->ptrTIMx == TIM2){
+		switch(handlerPWM->config.channel){
+		case CHANNEL_2:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM2_CC2 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		case CHANNEL_3:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM2_CC3 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		case CHANNEL_4:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM2_CC4 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		default: {
+			__NOP();
+			break;
+		}
+		}
+	}
+
+	else if(handlerPWM->ptrTIMx == TIM3){
+		switch(handlerPWM->config.channel){
+		case CHANNEL_1:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM3_CC1 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		default: {
+			__NOP();
+			break;
+		}
+		}
+	}
+
+	else if(handlerPWM->ptrTIMx == TIM4){
+		switch(handlerPWM->config.channel){
+		case CHANNEL_4:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM4_CC4 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		default: {
+			__NOP();
+			break;
+		}
+		}
+	}
+
+	else if(handlerPWM->ptrTIMx == TIM5){
+		switch(handlerPWM->config.channel){
+		case CHANNEL_1:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM5_CC1 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		case CHANNEL_2:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM5_CC2 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		case CHANNEL_3:{
+			ADC1->CR2 |= (EXT_TRIGGER_TIM5_CC3 << ADC_CR2_EXTSEL_Pos);
+			break;
+		}
+		default: {
+			__NOP();
+			break;
+		}
+		}
+	}
+
+} // Fin función adc_ExternalTrigger()
+
+
 
 /*
  * Configura el enable de las interrupciones y la activación del NVIC
@@ -1278,12 +1394,4 @@ void adc_ConfigAnalogPin(uint8_t adcChannel) {
 	gpio_Config(&handlerADCPin);
 }
 
-/*
- * Configuramos para hacer conversiones en múltiples canales
- * y con un orden específico (secuencia)
- */
-
-/*
- * Configuramos para Trigger externo
- */
 

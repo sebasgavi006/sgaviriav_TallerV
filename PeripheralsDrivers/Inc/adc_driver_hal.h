@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include "stm32f4xx.h"
+#include "pwm_driver_hal.h"
 
 enum{
 	CHANNEL_0 = 0,
@@ -76,12 +77,28 @@ enum{
 
 // Posiciones para la secuencia de la opción multicanal del ADC
 enum{
-	PRIMERA_POSICION_SQR3 = 1,
-	ULTIMA_POSICION_SQR3 = 6,
-	PRIMERA_POSICION_SQR2 = 7,
-	ULTIMA_POSICION_SQR2 = 12,
-	PRIMERA_POSICION_SQR1 = 13,
-	ULTIMA_POSICION_SQR1 = 16
+	PRIMERA_POSICION_SQR3 	= 1,
+	ULTIMA_POSICION_SQR3 	= 6,
+	PRIMERA_POSICION_SQR2 	= 7,
+	ULTIMA_POSICION_SQR2 	= 12,
+	PRIMERA_POSICION_SQR1 	= 13,
+	ULTIMA_POSICION_SQR1 	= 16
+};
+
+// Timer y Canal de PWM
+enum{
+	EXT_TRIGGER_TIM1_CC1	= 0b0000,
+	EXT_TRIGGER_TIM1_CC2	= 0b0001,
+	EXT_TRIGGER_TIM1_CC3	= 0b0010,
+	EXT_TRIGGER_TIM2_CC2	= 0b0011,
+	EXT_TRIGGER_TIM2_CC3	= 0b0100,
+	EXT_TRIGGER_TIM2_CC4	= 0b0101,
+	EXT_TRIGGER_TIM3_CC1	= 0b0111,
+	EXT_TRIGGER_TIM4_CC4	= 0b1001,
+	EXT_TRIGGER_TIM5_CC1	= 0b1010,
+	EXT_TRIGGER_TIM5_CC2	= 0b1011,
+	EXT_TRIGGER_TIM5_CC3	= 0b1100,
+	EXT_TRIGGER_EXTI11		= 0b1111,
 };
 
 
@@ -107,7 +124,6 @@ typedef struct{
 
 /* Header definitions for the public functions of adc_driver_hal */
 void adc_ConfigSingleChannel(ADC_Config_t *adcConfig);
-void adc_ConfigMultiChannel(ADC_Config_t *adcConfig[], uint8_t Length);
 void adc_ConfigAnalogPin(uint8_t adcChannel);
 void adc_CompleteCallback(void);
 void adc_StartSingleConv(void);
@@ -116,6 +132,9 @@ void adc_StartContinuousConv(void);
 void adc_StopContinuousConv(void);
 void adc_peripheralOnOFF(uint8_t state);
 uint16_t adc_GetValue(void);
+
+void adc_ConfigMultiChannel(ADC_Config_t *adcConfig, uint8_t Length);
+void adc_ExternalTrigger(PWM_Handler_t *handlerPWM);
 
 
 /* Configuraciones avanzadas del ADC */
