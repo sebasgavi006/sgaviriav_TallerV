@@ -1054,15 +1054,15 @@ void adc_ExternalTrigger(PWM_Handler_t *handlerPWM){
 	if(handlerPWM->ptrTIMx == TIM1){
 		// Vemos cuál Canal del Timer genera el PWM
 		switch(handlerPWM->config.channel){
-		case CHANNEL_1:{
+		case PWM_CHANNEL_1:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM1_CC1 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
-		case CHANNEL_2:{
+		case PWM_CHANNEL_2:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM1_CC2 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
-		case CHANNEL_3:{
+		case PWM_CHANNEL_3:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM1_CC3 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
@@ -1075,15 +1075,15 @@ void adc_ExternalTrigger(PWM_Handler_t *handlerPWM){
 
 	else if(handlerPWM->ptrTIMx == TIM2){
 		switch(handlerPWM->config.channel){
-		case CHANNEL_2:{
+		case PWM_CHANNEL_2:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM2_CC2 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
-		case CHANNEL_3:{
+		case PWM_CHANNEL_3:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM2_CC3 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
-		case CHANNEL_4:{
+		case PWM_CHANNEL_4:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM2_CC4 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
@@ -1096,7 +1096,7 @@ void adc_ExternalTrigger(PWM_Handler_t *handlerPWM){
 
 	else if(handlerPWM->ptrTIMx == TIM3){
 		switch(handlerPWM->config.channel){
-		case CHANNEL_1:{
+		case PWM_CHANNEL_1:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM3_CC1 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
@@ -1109,7 +1109,7 @@ void adc_ExternalTrigger(PWM_Handler_t *handlerPWM){
 
 	else if(handlerPWM->ptrTIMx == TIM4){
 		switch(handlerPWM->config.channel){
-		case CHANNEL_4:{
+		case PWM_CHANNEL_4:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM4_CC4 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
@@ -1122,15 +1122,15 @@ void adc_ExternalTrigger(PWM_Handler_t *handlerPWM){
 
 	else if(handlerPWM->ptrTIMx == TIM5){
 		switch(handlerPWM->config.channel){
-		case CHANNEL_1:{
+		case PWM_CHANNEL_1:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM5_CC1 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
-		case CHANNEL_2:{
+		case PWM_CHANNEL_2:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM5_CC2 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
-		case CHANNEL_3:{
+		case PWM_CHANNEL_3:{
 			ADC1->CR2 |= (EXT_TRIGGER_TIM5_CC3 << ADC_CR2_EXTSEL_Pos);
 			break;
 		}
@@ -1159,6 +1159,9 @@ static void adc_config_interrupt(ADC_Config_t *adcConfig) {
 		// Activamos las interrupciones del ADC debidas a conversiones
 		ADC1->CR1 |= ADC_CR1_EOCIE;
 
+		// Activamos las interrupciones debido a perdida de datos
+		ADC1->CR1 |= ADC_CR1_OVRIE;
+
 		// Activamos el canal del NVIC para leer las interrupciones (Matriculamos la interrupción)
 		__NVIC_EnableIRQ(ADC_IRQn);
 
@@ -1167,6 +1170,9 @@ static void adc_config_interrupt(ADC_Config_t *adcConfig) {
 	case ADC_INT_DISABLE: {
 		// Desactivamos las interrupciones del ADC
 		ADC1->CR1 &= ~ADC_CR1_EOCIE;
+
+		// Desactivamos las interrupciones debido a perdida de datos
+		ADC1->CR1 &= ~ADC_CR1_OVRIE;
 
 		// Desmatriculamos la interrupción del canal del NVIC
 		__NVIC_DisableIRQ(ADC_IRQn);
@@ -1226,6 +1232,13 @@ void adc_StartSingleConv(void) {
 	// Encendemos la conversión simple solo si está encendido el ADC
 	ADC1->CR2 |= ADC_CR2_SWSTART; // Realiza una única conversión y se detiene automáticamente
 
+	// Nos aseguramos que no esté activa la interrupción por Overrun
+	if(ADC1->SR & ADC_SR_OVR){
+		// Bajamos la bandera del Overrun
+		ADC1->SR &= ~ADC_SR_EOC;
+		ADC1->SR &= ~ADC_SR_OVR;
+		ADC1->SR |= ADC_SR_EOC;
+	}
 }
 
 /*
@@ -1274,6 +1287,11 @@ void ADC_IRQHandler(void) {
 		 significativos del final no importan */
 
 		// Se llama la función CallBack que atiende la interrupción
+		adc_CompleteCallback();
+	}
+
+	if (ADC1->SR & ADC_SR_OVR){
+		adcRawData = ADC1->DR;
 		adc_CompleteCallback();
 	}
 }
