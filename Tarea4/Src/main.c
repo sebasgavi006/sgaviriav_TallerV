@@ -164,9 +164,9 @@ int main(void){
 			flagADC = 0;
 
 			// Guardamos los datos adquiridos en los arreglos
-			ADC_Data1[count_ADC_Data] = sensores[0].adcData;
-			ADC_Data2[count_ADC_Data] = sensores[1].adcData;
-			ADC_Data3[count_ADC_Data] = sensores[2].adcData;
+			ADC_Data1[count_ADC_Data] = (float32_t)sensores[0].adcData;
+			ADC_Data2[count_ADC_Data] = (float32_t)sensores[1].adcData;
+			ADC_Data3[count_ADC_Data] = (float32_t)sensores[2].adcData;
 
 			// Reiniciamos la secuencia de conversiones (Ronda de conversiones)
 			startPwmSignal(&pwmHandler);
@@ -364,6 +364,21 @@ void configPeripherals(void){
 /* Función para realizar el cálculo de la FFT para cada sensor */
 void procesamientoFFT(float32_t *array){
 
+	/* Además, obtenemos los valores máximo y mínimo de la conversión ADC */
+	maxADC = 0;
+	minADC = 0;
+
+	arm_max_no_idx_f32(array, ADC_DataSize, &maxADC);
+
+	arm_min_no_idx_f32(array, ADC_DataSize, &minADC);
+
+	/* Imprimimos los resultados por transmisión serial */
+	sprintf(bufferMsg, "Valor maximo: %.2fV\r\n", ((3.3*maxADC)/4095));
+	usart_WriteMsg(&commSerial, bufferMsg);
+
+	sprintf(bufferMsg, "Valor minimo: %.2fV\r\n", ((3.3*minADC)/4095));
+	usart_WriteMsg(&commSerial, bufferMsg);
+
 	/* Inicializamos la funcion de la transformada */
 	statusInitFFT = arm_rfft_fast_init_f32(&config_Rfft_fast_f32, fftSize);
 
@@ -388,23 +403,13 @@ void procesamientoFFT(float32_t *array){
 
 	arm_max_f32(fft_magnitud, ADC_DataSize/2, &maxValue, &maxIndex);
 
-	/* Además, obtenemos los valores máximo y mínimo de la conversión ADC */
-	maxADC = 0;
-	minADC = 0;
-
-	arm_max_no_idx_f32(array, ADC_DataSize, &maxADC);
-
-	arm_min_no_idx_f32(array, ADC_DataSize, &minADC);
-
-	/* Imprimimos los resultados por transmisión serial */
-	sprintf(bufferMsg, "Valor maximo: %.2f\r\n", maxADC);
-	usart_WriteMsg(&commSerial, bufferMsg);
-
-	sprintf(bufferMsg, "Valor minimo: %.2f\r\n", maxADC);
-	usart_WriteMsg(&commSerial, bufferMsg);
-
 	sprintf(bufferMsg, "Frecuencia: %.2f Hz\r\n", ((maxIndex/2) * (frec_muestreo/ADC_DataSize)));
 	usart_WriteMsg(&commSerial, bufferMsg);
+
+	/* Limpiamos el arreglo original */
+	for(uint16_t i = 0; i < 511; i++){
+		array[i] = 0;
+	}
 
 	usart2DataReceived = '\0';
 
