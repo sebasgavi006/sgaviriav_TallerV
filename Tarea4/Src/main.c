@@ -31,12 +31,12 @@ ADC_Config_t sensores[3] = {0}; // Array de sensores
 ADC_Config_t sensor1 = {0};
 ADC_Config_t sensor2 = {0};
 ADC_Config_t sensor3 = {0};
-uint8_t Length = 3; // Tamaño del arreglo
-uint8_t posicion = 0;	// Posición de la secuencia PWM
-uint16_t count_ADC_Data = 0; // Contador de la cantidad de datos que lleva el arreglo ADC_Data[512]
-uint8_t flagStop = 0;	// Detiene las conversiones ADC cuando finalice las 512 conversiones
-uint8_t flagADC = 0;	// Bandera para controlar la finalización de una secuencia de conversiones
-char flagLetra = '\0';	// Bandera para mirar qué letra hay
+uint8_t 	Length = 3; // Tamaño del arreglo
+uint8_t 	posicion = 0;	// Posición de la secuencia PWM
+uint16_t 	count_ADC_Data = 0; // Contador de la cantidad de datos que lleva el arreglo ADC_Data[512]
+uint8_t		flagStop = 0;	// Detiene las conversiones ADC cuando finalice las 512 conversiones
+uint8_t 	flagADC = 0;	// Bandera para controlar la finalización de una secuencia de conversiones
+char 		flagLetra = '\0';	// Bandera para mirar qué letra hay
 
 float32_t ADC_Data1[512] = {0};	// Arreglo para guardar los datos para la FFT del sensor 1
 float32_t ADC_Data2[512] = {0};	// Arreglo para guardar los datos para la FFT del sensor 2
@@ -50,18 +50,24 @@ PWM_Handler_t pwmHandler = {0};
 USART_Handler_t commSerial = {0};
 GPIO_Handler_t pinTx = {0};
 GPIO_Handler_t pinRx = {0};
-uint8_t sendMsg = 0;
 uint8_t usart2DataReceived = 0;
-char bufferMsg[64] = {0};
+char	bufferMsg[64] = {0};
 
 
 // Código de los videos del classroom
 /* Elementos para generar una selal */
-#define ADC_DataSize 512	// Tamaño del arreglo de datos
-uint16_t fftSize = 512;		// Tamaño del arreglo de los valores obtenidos de la transformada
-float32_t frec_muestreo = 16000000/(16*25); //frecuencia de muestreo -> 40kHz
-float32_t fft_magnitud[ADC_DataSize/2];
-float32_t transformedSignal[ADC_DataSize];
+#define 	ADC_DataSize 512	// Tamaño del arreglo de datos
+uint16_t 	fftSize = 512;		// Tamaño del arreglo de los valores obtenidos de la transformada
+float32_t 	frec_muestreo = 16000000/(16*25); //frecuencia de muestreo -> 40kHz
+float32_t 	fft_magnitud[ADC_DataSize/2];
+float32_t 	transformedSignal[ADC_DataSize];
+
+/* Obtenemos los valores Máximo y Mínimo de la magnitud de los complejos, y sus índices */
+float32_t   maxValue = 0;
+uint32_t 	maxIndex = 0;
+float32_t maxADC = 0;
+float32_t minADC = 0;
+
 
 /* Variables para instanciar e inicializar los funciones de la FFT
  * (Necesarias para el uso de las funciones FFT del CMSIS)
@@ -175,8 +181,6 @@ int main(void){
 			/* Denetemos las conversiones ADC */
 			stopPwmSignal(&pwmHandler);
 
-			sprintf(bufferMsg, "\r\n");
-			usart_WriteMsg(&commSerial, bufferMsg);
 			sprintf(bufferMsg, "Terminé la conversión \n\r");
 			usart_WriteMsg(&commSerial, bufferMsg);
 
@@ -184,16 +188,24 @@ int main(void){
 			switch(flagLetra){
 			case 'a':{
 				procesamientoFFT(ADC_Data1);
+				break;
 			}
 			case 'b':{
 				procesamientoFFT(ADC_Data2);
+				break;
 			}
 			case 'c':{
 				procesamientoFFT(ADC_Data3);
+				break;
+			}
+			default:{
+				__NOP();
+				break;
 			}
 			}
 
 			flagLetra = '\0';
+			usart2DataReceived = '\0';
 			count_ADC_Data = 0; // Reiniciamos el contador luego de realizar el FFT
 		}
 
@@ -323,22 +335,22 @@ void configPeripherals(void){
 
 	// 6. ===== ADC =====
 
-	/* Configuración del sensor1 */
-	sensor1.channel				= CHANNEL_6;
+	/* Configuración del sensor1 -> PC0 -> AZUL */
+	sensor1.channel				= CHANNEL_10;
 	sensor1.resolution			= RESOLUTION_12_BIT;
 	sensor1.dataAlignment		= ALIGNMENT_RIGHT;
 	sensor1.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
 	sensor1.interrupState		= ADC_INT_ENABLE;
 
-	/* Configuración del sensor2 */
-	sensor2.channel				= CHANNEL_15;
+	/* Configuración del sensor2 -> PC1 -> MORADO*/
+	sensor2.channel				= CHANNEL_11;
 	sensor2.resolution			= RESOLUTION_12_BIT;
 	sensor2.dataAlignment		= ALIGNMENT_RIGHT;
 	sensor2.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
 	sensor2.interrupState		= ADC_INT_ENABLE;
 
-	/* Configuración del sensor3 */
-	sensor3.channel				= CHANNEL_7;
+	/* Configuración del sensor3 -> PB0 -> AMARILLO*/
+	sensor3.channel				= CHANNEL_8;
 	sensor3.resolution			= RESOLUTION_12_BIT;
 	sensor3.dataAlignment		= ALIGNMENT_RIGHT;
 	sensor3.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
@@ -364,28 +376,34 @@ void procesamientoFFT(float32_t *array){
 		usart_WriteMsg(&commSerial, "FFT no inicializada correctamente\n\r");
 	}
 
+	/* Calculamos la magnitud de los resultados obtenidos gracias a la transformada,
+	 * dado su caracter complejo
+	 */
 	transformedSignal[0] = 0;
 	arm_cmplx_mag_f32(transformedSignal, fft_magnitud, ADC_DataSize/2);
 
-	/* Obtenemos los valores Máximo y Mínimo de la magnitud de los complejos, y sus índices */
-	float32_t   maxValue;
-	float32_t   minValue;
-	uint32_t 	maxIndex;
-	uint32_t 	minIndex;
+	/* Obtenemos el valor máximo de la magnitud de los complejos, para hallar la frecuencia dominante */
+	maxValue = 0;
+	maxIndex = 0;
 
 	arm_max_f32(fft_magnitud, ADC_DataSize/2, &maxValue, &maxIndex);
-	arm_min_f32(fft_magnitud, ADC_DataSize/2, &minValue, &minIndex);
 
-	sprintf(bufferMsg, "\r\n");
+	/* Además, obtenemos los valores máximo y mínimo de la conversión ADC */
+	maxADC = 0;
+	minADC = 0;
+
+	arm_max_no_idx_f32(array, ADC_DataSize, &maxADC);
+
+	arm_min_no_idx_f32(array, ADC_DataSize, &minADC);
+
+	/* Imprimimos los resultados por transmisión serial */
+	sprintf(bufferMsg, "Valor maximo: %.2f\r\n", maxADC);
 	usart_WriteMsg(&commSerial, bufferMsg);
 
-	sprintf(bufferMsg, "max power: %f\r\n", maxValue);
+	sprintf(bufferMsg, "Valor minimo: %.2f\r\n", maxADC);
 	usart_WriteMsg(&commSerial, bufferMsg);
 
-	sprintf(bufferMsg, "min power: %f\r\n", minValue);
-	usart_WriteMsg(&commSerial, bufferMsg);
-
-	sprintf(bufferMsg, "frequency: %f\r\n", ((maxIndex/2) * (frec_muestreo/ADC_DataSize)));
+	sprintf(bufferMsg, "Frecuencia: %.2f Hz\r\n", ((maxIndex/2) * (frec_muestreo/ADC_DataSize)));
 	usart_WriteMsg(&commSerial, bufferMsg);
 
 	usart2DataReceived = '\0';
@@ -397,7 +415,6 @@ void procesamientoFFT(float32_t *array){
 /* Callback de Timer 2 (Controla el userLed) */
 void Timer2_Callback(void){
 	gpio_TooglePin(&userLed);
-	sendMsg ++;
 }
 
 /* Callback del ADC -> Atiende la interrupción cada que finaliza una converisón
