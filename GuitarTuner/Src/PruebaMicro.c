@@ -2,10 +2,10 @@
  ******************************************************************************
  * @file           : main.c
  * @author         : Sebastian Gaviria Valencia
- * @brief          : Tarea 4.
- * 					 Implementación del ADC Multicanal, PWM y USART para hallar
- * 					 la frecuencia de una señal de entrada, mediante el uso de
- * 					 la Transformada Rápida de Fourier (FFT).
+ * @brief          : Prueba del ADC y PWM para la realización de conversiones
+ * 					 Análogas captadas del micrófono Referencia MAX9814.
+ *
+ * 					 La idea es usar un solo canal del módulo ADC y el PWM
  ******************************************************************************
  **/
 
@@ -22,6 +22,9 @@
 #include "pwm_driver_hal.h"
 
 // Definicion de los Handlers necesario
+
+/* ===== CONSTANTES ===== */
+#define	MCU_CLOCK_16_MHz	16000000
 GPIO_Handler_t userLed = {0}; //Led de estado PinA5
 
 Timer_Handler_t blinkTimer = {0};
@@ -38,13 +41,10 @@ uint8_t		flagStop = 0;	// Detiene las conversiones ADC cuando finalice las 512 c
 uint8_t 	flagADC = 0;	// Bandera para controlar la finalización de una secuencia de conversiones
 char 		flagLetra = '\0';	// Bandera para mirar qué letra hay
 
-float32_t ADC_Data1[512] = {0};	// Arreglo para guardar los datos para la FFT del sensor 1
-float32_t ADC_Data2[512] = {0};	// Arreglo para guardar los datos para la FFT del sensor 2
-float32_t ADC_Data3[512] = {0};	// Arreglo para guardar los datos para la FFT del sensor 3
-
 
 // PWM para generar la frecuencia de muestreo
 PWM_Handler_t pwmHandler = {0};
+GPIO_Handler_t pinPWM = {0};
 
 /* Elementos para la comunicacion serial */
 USART_Handler_t commSerial = {0};
@@ -56,15 +56,26 @@ char	bufferMsg[64] = {0};
 
 // Código de los videos del classroom
 /* Elementos para generar una selal */
-#define 	ADC_DataSize 512	// Tamaño del arreglo de datos
-uint16_t 	fftSize = 512;		// Tamaño del arreglo de los valores obtenidos de la transformada
-float32_t 	frec_muestreo = 16000000/(16*25); //frecuencia de muestreo -> 40kHz
+#define 	ADC_DataSize 1024	// Tamaño del arreglo de datos
+uint16_t 	fftSize = ADC_DataSize;		// Tamaño del arreglo de los valores obtenidos de la transformada
+float32_t 	frec_muestreo; //frecuencia de muestreo -> 40kHz
+float32_t	factor_correccion;
+float32_t	frec_real;
+float32_t	fft_reales[ADC_DataSize/2];
 float32_t 	fft_magnitud[ADC_DataSize/2];
 float32_t 	transformedSignal[ADC_DataSize];
 
+/* Arreglos para guardar el los datos obtenidos del ADC */
+float32_t ADC_Data1[ADC_DataSize] = {0};	// Arreglo para guardar los datos para la FFT del sensor 1
+float32_t ADC_Data2[ADC_DataSize] = {0};	// Arreglo para guardar los datos para la FFT del sensor 2
+float32_t ADC_Data3[ADC_DataSize] = {0};	// Arreglo para guardar los datos para la FFT del sensor 3
+
 /* Obtenemos los valores Máximo y Mínimo de la magnitud de los complejos, y sus índices */
+float32_t	offsetDC = 0;
 float32_t   maxValue = 0;
 uint32_t 	maxIndex = 0;
+float32_t   maxValue_r = 0;
+uint32_t 	maxIndex_r = 0;
 float32_t maxADC = 0;
 float32_t minADC = 0;
 
@@ -97,6 +108,12 @@ int main(void){
 	sensores[1] = sensor2;
 	sensores[2] = sensor3;
 
+	/* Definimos la frecuencia de muestreo de acuerdo al PWM definido */
+	frec_muestreo = MCU_CLOCK_16_MHz / (pwmHandler.config.periodo * pwmHandler.config.prescaler);
+
+	factor_correccion = (0.00101 * (frec_muestreo/1000)) + 0.0612; // Porque se obtuvo a partir de kHz
+
+	frec_real = frec_muestreo * (1 - factor_correccion);
 
 	/* Cargamos la configuración de los sensores en la función Multicanal del ADC */
 	adc_ConfigMultiChannel(sensores, Length);
@@ -157,29 +174,11 @@ int main(void){
 			usart2DataReceived = '\0';
 		}
 
-		/* Guarda los datos y reinicia la secuencia de conversión */
-		if(flagADC){
-
-			// Bajamos la bandera
-			flagADC = 0;
-
-			// Guardamos los datos adquiridos en los arreglos
-			ADC_Data1[count_ADC_Data] = (float32_t)sensores[0].adcData;
-			ADC_Data2[count_ADC_Data] = (float32_t)sensores[1].adcData;
-			ADC_Data3[count_ADC_Data] = (float32_t)sensores[2].adcData;
-
-			// Reiniciamos la secuencia de conversiones (Ronda de conversiones)
-			startPwmSignal(&pwmHandler);
-		}
-
 
 		if(flagStop){
 
 			// Bajamos la bandera
 			flagStop = 0;
-
-			/* Denetemos las conversiones ADC */
-			stopPwmSignal(&pwmHandler);
 
 			sprintf(bufferMsg, "Terminé la conversión \n\r");
 			usart_WriteMsg(&commSerial, bufferMsg);
@@ -204,9 +203,8 @@ int main(void){
 			}
 			}
 
-			flagLetra = '\0';
+			flagLetra = '\0'; // Limpiamos la bandera de transmisión serial
 			usart2DataReceived = '\0';
-			count_ADC_Data = 0; // Reiniciamos el contador luego de realizar el FFT
 		}
 
 
@@ -286,6 +284,17 @@ void configPeripherals(void){
 	/* Cargamos la configuración */
 	gpio_Config(&pinRx);
 
+	/* Usamos el PinA3 para RX */
+	pinPWM.pGPIOx								= GPIOB;
+	pinPWM.pinConfig.GPIO_PinNumber				= PIN_4;
+	pinPWM.pinConfig.GPIO_PinMode				= GPIO_MODE_ALTFN;
+	pinPWM.pinConfig.GPIO_PinAltFunMode			= AF2;
+	pinPWM.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
+	pinPWM.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_FAST;
+
+	/* Cargamos la configuración */
+	gpio_Config(&pinPWM);
+
 	// 2. ===== TIMERS =====
 	/* Configurando el Timer del Blinky*/
 	blinkTimer.pTIMx								= TIM2;
@@ -326,8 +335,8 @@ void configPeripherals(void){
 	pwmHandler.ptrTIMx					= TIM3; 	// Timer3 usado para el PWM
 	pwmHandler.config.channel			= PWM_CHANNEL_1;
 	pwmHandler.config.prescaler			= 16; 		// 1 us
-	pwmHandler.config.periodo			= 25;		// 25 us -> 40kHz
-	pwmHandler.config.dutyCycle			= 12;		// Activo un ~50% del periodo
+	pwmHandler.config.periodo			= 286;		// 25 us -> 40kHz
+	pwmHandler.config.dutyCycle			= 16;		// Activo un ~50% del periodo
 
 	/* Cargar la configuración del PWM */
 	pwm_Config(&pwmHandler);
@@ -353,7 +362,7 @@ void configPeripherals(void){
 	sensor3.channel				= CHANNEL_8;
 	sensor3.resolution			= RESOLUTION_12_BIT;
 	sensor3.dataAlignment		= ALIGNMENT_RIGHT;
-	sensor3.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
+	sensor3.samplingPeriod		= SAMPLING_PERIOD_56_CYCLES;
 	sensor3.interrupState		= ADC_INT_ENABLE;
 
 
@@ -394,20 +403,41 @@ void procesamientoFFT(float32_t *array){
 	/* Calculamos la magnitud de los resultados obtenidos gracias a la transformada,
 	 * dado su caracter complejo
 	 */
+	// Limpiamos las primeras dos posiciones, pues no nos dan información de la frecuencia
+
+	offsetDC = transformedSignal[0];
+
 	transformedSignal[0] = 0;
-	arm_cmplx_mag_f32(transformedSignal, fft_magnitud, ADC_DataSize/2);
+	transformedSignal[1] = 0;
+
+	for(uint16_t i = 0; i < ADC_DataSize/2; i++){
+		fft_reales[i] = transformedSignal[i*2];
+	}
+
+	maxValue_r = 0;
+	maxIndex_r = 0;
+	arm_max_f32(fft_reales, ADC_DataSize/2, &maxValue_r, &maxIndex_r);
+
+	sprintf(bufferMsg, "\r\n");
+	usart_WriteMsg(&commSerial, bufferMsg);
+	sprintf(bufferMsg, "Frecuencia: %.4f Hz\r\n", ((maxIndex_r) * (frec_real/ADC_DataSize)));
+	usart_WriteMsg(&commSerial, bufferMsg);
+
 
 	/* Obtenemos el valor máximo de la magnitud de los complejos, para hallar la frecuencia dominante */
+	arm_cmplx_mag_f32(transformedSignal, fft_magnitud, ADC_DataSize/2);
+
 	maxValue = 0;
 	maxIndex = 0;
-
 	arm_max_f32(fft_magnitud, ADC_DataSize/2, &maxValue, &maxIndex);
 
-	sprintf(bufferMsg, "Frecuencia: %.2f Hz\r\n", ((maxIndex/2) * (frec_muestreo/ADC_DataSize)));
+	sprintf(bufferMsg, "\r\n");
+	usart_WriteMsg(&commSerial, bufferMsg);
+	sprintf(bufferMsg, "Frecuencia (Con magnitud): %.4f Hz\r\n", ((maxIndex) * (frec_real/ADC_DataSize)));
 	usart_WriteMsg(&commSerial, bufferMsg);
 
 	/* Limpiamos el arreglo original */
-	for(uint16_t i = 0; i < 511; i++){
+	for(uint16_t i = 0; i < (ADC_DataSize-1); i++){
 		array[i] = 0;
 	}
 
@@ -429,18 +459,34 @@ void adc_CompleteCallback(void){
 
 	// Guardamos el valor de la conversión correspondiente a cada sensor de la secuencia
 	sensores[posicion].adcData = adc_GetValue();
+	// Cargamos el valor guardado en el array de conversiones
+	switch(posicion){
+	case 0:{
+		ADC_Data1[count_ADC_Data] = (float32_t)sensores[posicion].adcData;
+		break;
+	}
+	case 1:{
+		ADC_Data2[count_ADC_Data] = (float32_t)sensores[posicion].adcData;
+		break;
+	}
+	case 2:{
+		ADC_Data3[count_ADC_Data] = (float32_t)sensores[posicion].adcData;
+		break;
+	}
+	}
 	posicion++;
 
+	/* Cuando se completa un ciclo, reiniciamos el contador de posicion
+	 * y aumentamos en uno el contador de la secuencia
+	 */
 	if(posicion >= Length){
 		posicion = 0;
-		stopPwmSignal(&pwmHandler);
 		count_ADC_Data++;
-		flagADC = 1;
 	}
 
-	if(count_ADC_Data > 511){
+	if(count_ADC_Data > (ADC_DataSize-1)){
+		stopPwmSignal(&pwmHandler);
 		flagStop = 1;
-		flagADC = 0;
 		count_ADC_Data = 0;
 	}
 }
