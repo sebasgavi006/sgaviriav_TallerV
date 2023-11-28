@@ -17,6 +17,13 @@
 
 #define SYSTICK_PSC_1ms		16000	// El SysTick funciona a 1ms
 
+#define SYSTICK_500ms		500
+#define SYSTICK_1s			1000
+#define SYSTICK_2s			2000
+#define SYSTICK_3s			3000
+#define SYSTICK_5s			5000
+#define SYSTICK_10s			10000
+
 enum{
 	SYSTICK_OFF = 0,
 	SYSTICK_ON
