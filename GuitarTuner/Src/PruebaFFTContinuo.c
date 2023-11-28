@@ -10,16 +10,20 @@
  **/
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <math.h>
 #include "arm_math.h"
 
 #include "stm32f4xx.h"
 #include "stm32_assert.h"
+#include "systick_driver_hal.h"
 #include "gpio_driver_hal.h"
 #include "timer_driver_hal.h"
 #include "adc_driver_hal.h"
 #include "usart_driver_hal.h"
 #include "pwm_driver_hal.h"
+
+#include "microphone_driver.h"
 
 // Definicion de los Handlers necesario
 
@@ -36,7 +40,6 @@ ADC_Config_t sensores[LENGTH] = {0}; // Array de sensores
 ADC_Config_t sensor1 = {0};
 uint16_t	count_ADC_Data = 0; // Contador de la cantidad de datos que lleva el arreglo ADC_Data[512]
 uint8_t		flagStop = 0;	// Detiene las conversiones ADC cuando finalice las 512 conversiones
-uint8_t 	flagADC = 0;	// Bandera para controlar la finalización de una secuencia de conversiones
 
 
 // PWM para generar la frecuencia de muestreo
@@ -60,22 +63,24 @@ float32_t	frec_corregida;
 float32_t	frec_real;
 float32_t	frec_real_magnitud;
 float32_t 	frec_prom;
+float32_t 	resolucion_FFT;
 
 
 float32_t	fft_reales[ADC_DataSize/2];
 float32_t 	fft_magnitud[ADC_DataSize/2];
 float32_t 	transformedSignal[ADC_DataSize];
 
+/* Constantes para el manejo del rango de frecuencias
+ * y la selección de la frecuencia adecuada
+ */
+uint8_t nota_cuerda;	// Bandera para indicar la cuerda que se está afinando
+float32_t dif_frecuencias;
+uint8_t flagAfinado = 0;
+uint8_t flagNotaCuerda = 0;
+
 
 /* Arreglos para guardar el los datos obtenidos del ADC */
 float32_t ADC_Data1[ADC_DataSize] = {0};	// Arreglo para guardar los datos para la FFT del sensor 1
-
-
-/* Obtenemos los valores Máximo y Mínimo de la magnitud de los complejos, y sus índices */
-float32_t   maxValue = 0;
-uint32_t 	maxIndex = 0;
-float32_t   maxValue_r = 0;
-uint32_t 	maxIndex_r = 0;
 
 
 /* Variables para instanciar e inicializar los funciones de la FFT
@@ -90,6 +95,7 @@ arm_status statusInitFFT = ARM_MATH_ARGUMENT_ERROR;
 void configPeripherals(void);
 void procesamientoFFT(float32_t *array);
 void seleccionRango(float32_t frecuencia);
+void verificarFrecuencia(float32_t numero);
 
 
 /*
@@ -100,17 +106,28 @@ int main(void){
 	/* Activamos el FPU (Unidad de Punto Flotante) */
 	SCB->CPACR |= (0xF << 20);
 
+	/* Aseguramos las banderas */
+	count_ADC_Data = 0;
+	nota_cuerda = 0;
+	flagStop = 0;
+	flagAfinado = 0;
+	flagNotaCuerda = 0;
+
 	/* Configuramos los periféricos */
 	configPeripherals();
 
 	sensores[0] = sensor1;
 
-	/* Definimos la frecuencia de muestreo de acuerdo al PWM definido */
-	frec_muestreo = MCU_CLOCK_16_MHz / (pwmHandler.config.periodo * pwmHandler.config.prescaler);
 
-	factor_correccion = (0.00101 * (frec_muestreo/1000)) + 0.0612; // Porque se obtuvo a partir de kHz
+	/* ===== DEFINICIÓN DE VARIABLES ===== */
+	frec_muestreo = MCU_CLOCK_16_MHz / (pwmHandler.config.periodo * pwmHandler.config.prescaler);	// Valor para la frecuencia de muestreo
 
-	frec_corregida = frec_muestreo * (1 - factor_correccion);
+	factor_correccion = (0.00101 * (frec_muestreo/1000)) + 0.0612; // Factor de corrección de la frecuecnia -> x/1000 Porque se obtuvo a partir de kHz
+
+	frec_corregida = frec_muestreo * (1 - factor_correccion);	// Frecuencia corregida (Aproximación a la Real)
+
+	resolucion_FFT = frec_corregida/ADC_DataSize;	// Resolución de la transformada -> Distancia entre cada intervalo de frecuencia
+
 
 	/* Cargamos la configuración de los sensores en la función Multicanal del ADC */
 	adc_ConfigMultiChannel(sensores, LENGTH);
@@ -122,9 +139,9 @@ int main(void){
 	/* Loop forever*/
 	while (1){
 
+		/* Prueba del USART */
 		if (usart2DataReceived == 't'){
-			sprintf(bufferMsg, "¿Probando? ¡Funciona! Ouh-Yeah! \n\r");
-			usart_WriteMsg(&commSerial, bufferMsg);
+			usart_WriteMsg(&commSerial, "¿Probando? ¡Funciona! Ouh-Yeah! \n\r");
 			usart2DataReceived = '\0';
 		}
 
@@ -133,11 +150,8 @@ int main(void){
 
 			startPwmSignal(&pwmHandler);
 
-			sprintf(bufferMsg, "\r\n");
-			usart_WriteMsg(&commSerial, bufferMsg);
-
-			sprintf(bufferMsg, "Empezando conversiones del Sensor 1 \n\r");
-			usart_WriteMsg(&commSerial, bufferMsg);
+			usart_WriteMsg(&commSerial, "\r\n");
+			usart_WriteMsg(&commSerial, "Empezando conversiones del Sensor 1 \n\r");
 			usart2DataReceived = '\0';
 		}
 
@@ -145,32 +159,86 @@ int main(void){
 
 			stopPwmSignal(&pwmHandler);
 
-			sprintf(bufferMsg, "\r\n");
-			usart_WriteMsg(&commSerial, bufferMsg);
-
-			sprintf(bufferMsg, "Pausando conversiones del Sensor 1 \n\r");
-			usart_WriteMsg(&commSerial, bufferMsg);
+			usart_WriteMsg(&commSerial, "\r\n");
+			usart_WriteMsg(&commSerial, "Pausando conversiones del Sensor 1 \n\r");
 			usart2DataReceived = '\0';
 		}
 
 
 		/* Se atiende la bandera que indica la finalización de las conversiones ADC */
-		if(flagStop){
+		if(flagStop && (!flagAfinado)){
 
 			// Bajamos la bandera
 			flagStop = 0;
 
-			sprintf(bufferMsg, "Terminé la conversión \n\r");
-			usart_WriteMsg(&commSerial, bufferMsg);
+			usart_WriteMsg(&commSerial, "Terminé la conversión \n\r");
 
+			// Se obtiene la transformada
 			procesamientoFFT(ADC_Data1);
 
 			frec_prom = frec_prom;
 
+			// Se verifica el rango y se asigna un valor a nota_cuerda según el caso
+			if(!nota_cuerda){
+				seleccionRango(frec_prom);
+				flagNotaCuerda = 1;
+			}
+
+			// Se calcula la diferencia de frecuencia según la cuerda que se está afinando
+			if(flagNotaCuerda){
+				switch(nota_cuerda){
+				case E2: {
+					dif_frecuencias = FREC_E2 - frec_prom; // Obtenemos la diferencia de frecuencias
+					break;
+				}
+				case A2: {
+					dif_frecuencias = FREC_A2 - frec_prom;
+					break;
+				}
+				case D3: {
+					dif_frecuencias = FREC_D3 - frec_prom;
+					break;
+				}
+				case G3: {
+					dif_frecuencias = FREC_G3 - frec_prom;
+					break;
+				}
+				case B3: {
+					dif_frecuencias = FREC_B3 - frec_prom;
+					break;
+				}
+				case E4: {
+					dif_frecuencias = FREC_E4 - frec_prom;
+					break;
+				}
+				default:{
+					__NOP();
+					break;
+				}
+				}
+			}
+
+			verificarFrecuencia(dif_frecuencias);
+
 			usart2DataReceived = '\0';
+
+			systick_Delay_ms(1000);
+
+			if(!flagAfinado){
+				startPwmSignal(&pwmHandler);
+			}
 		}
 
-		/* Se imprime de acuerdon al rango en el que se encuentra la frecuencia */
+
+		/* Cuando esté afinada la cuerda, se detiene el programa hasta iniciar
+		 * una nueva afinación
+		 */
+		if(flagAfinado){
+			stopPwmSignal(&pwmHandler);
+			flagAfinado = 0;
+			flagNotaCuerda = 0;
+			nota_cuerda = 0;
+		}
 
 
 	} // Fin while()
@@ -312,6 +380,12 @@ void configPeripherals(void){
 /* Función para realizar el cálculo de la FFT para cada sensor */
 void procesamientoFFT(float32_t *array){
 
+	/* Obtenemos los valores Máximo y Mínimo de la magnitud de los complejos, y sus índices */
+	float32_t   maxValue = 0;
+	uint32_t 	maxIndex = 0;
+	float32_t   maxValue_r = 0;
+	uint32_t 	maxIndex_r = 0;
+
 	/* Inicializamos la funcion de la transformada */
 	statusInitFFT = arm_rfft_fast_init_f32(&config_Rfft_fast_f32, fftSize);
 
@@ -340,10 +414,9 @@ void procesamientoFFT(float32_t *array){
 	maxIndex_r = 0;
 	arm_max_f32(fft_reales, ADC_DataSize/2, &maxValue_r, &maxIndex_r);
 
-	frec_real = ((maxIndex_r) * (frec_corregida/ADC_DataSize));
+	frec_real = (maxIndex_r * resolucion_FFT);
 
-	sprintf(bufferMsg, "\r\n");
-	usart_WriteMsg(&commSerial, bufferMsg);
+	usart_WriteMsg(&commSerial, "\r\n");
 	sprintf(bufferMsg, "Frecuencia (Con max): %.4f Hz\r\n", frec_real);
 	usart_WriteMsg(&commSerial, bufferMsg);
 
@@ -355,10 +428,9 @@ void procesamientoFFT(float32_t *array){
 	maxIndex = 0;
 	arm_max_f32(fft_magnitud, ADC_DataSize/2, &maxValue, &maxIndex);
 
-	frec_real_magnitud = ((maxIndex) * (frec_corregida/ADC_DataSize));
+	frec_real_magnitud = (maxIndex * resolucion_FFT);
 
-	sprintf(bufferMsg, "\r\n");
-	usart_WriteMsg(&commSerial, bufferMsg);
+	usart_WriteMsg(&commSerial, "\r\n");
 	sprintf(bufferMsg, "Frecuencia (Con magnitud): %.4f Hz\r\n", frec_real_magnitud);
 	usart_WriteMsg(&commSerial, bufferMsg);
 
@@ -367,8 +439,7 @@ void procesamientoFFT(float32_t *array){
 
 	arm_mean_f32(result_fft, 2, &frec_prom);
 
-	sprintf(bufferMsg, "\r\n");
-	usart_WriteMsg(&commSerial, bufferMsg);
+	usart_WriteMsg(&commSerial, "\r\n");
 	sprintf(bufferMsg, "Frecuencia (Promedio): %.4f Hz\r\n", frec_prom);
 	usart_WriteMsg(&commSerial, bufferMsg);
 
@@ -383,12 +454,60 @@ void procesamientoFFT(float32_t *array){
 
 
 /*
- * Hola
+ * Función para determinar cual cuerda se desea afinar, que detecta de manera
+ * automática con base a un rango de frecuencias
  */
 void seleccionRango(float32_t frecuencia){
 
+	if(LIM_INFERIOR_E2 < frecuencia || frecuencia <= LIM_SUPERIOR_E2){
+		nota_cuerda = E2;	// Levantamos una bandera que permite determinar la cuerda específica
+		usart_WriteMsg(&commSerial, "Afinando la cuerda N°6 (E2) \r\n");
+	}
+	else if(LIM_INFERIOR_A2 < frecuencia || frecuencia <= LIM_SUPERIOR_A2){
+		nota_cuerda = A2;
+		usart_WriteMsg(&commSerial, "Afinando la cuerda N°5 (A2) \r\n");
+	}
+	else if(LIM_INFERIOR_D3 < frecuencia || frecuencia <= LIM_SUPERIOR_D3){
+		nota_cuerda = D3;
+		usart_WriteMsg(&commSerial, "Afinando la cuerda N°4 (D3) \r\n");
+	}
+	else if(LIM_INFERIOR_G3 < frecuencia || frecuencia <= LIM_SUPERIOR_G3){
+		nota_cuerda = G3;
+		usart_WriteMsg(&commSerial, "Afinando la cuerda N°3 (G3) \r\n");
+	}
+	else if(LIM_INFERIOR_D3 < frecuencia || frecuencia <= LIM_SUPERIOR_D3){
+		nota_cuerda = D3;
+		usart_WriteMsg(&commSerial, "Afinando la cuerda N°2 (D3) \r\n");
+	}
+	else if(LIM_INFERIOR_E4 < frecuencia || frecuencia < LIM_SUPERIOR_E4){
+		nota_cuerda = E4;
+		usart_WriteMsg(&commSerial, "Afinando la cuerda N°1 (E4) \r\n");
+	}
+	else{
+		nota_cuerda = 0;
+	}
 
 } // Fin seleccionRango()
+
+
+
+/*
+ * Función para verificar si un número es negativo
+ */
+void verificarFrecuencia(float32_t numero){
+	if(numero < -(resolucion_FFT*2)){
+		usart_WriteMsg(&commSerial, "Aprieta la clavija \r\n");
+	}
+	else if(numero > (resolucion_FFT*2)){
+		usart_WriteMsg(&commSerial, "Afloja la clavija \r\n");
+	}
+	else{
+		// Levantamos la bandera para indicar el fin del afinador
+		flagAfinado = 1;
+		usart_WriteMsg(&commSerial, "¡La cuerda esta afinada! \r\n");
+
+	}
+} // Fin función verificarNegativo()
 
 
 
