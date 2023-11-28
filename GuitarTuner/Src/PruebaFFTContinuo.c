@@ -45,6 +45,9 @@ uint8_t		flagStop = 0;	// Detiene las conversiones ADC cuando finalice las 512 c
 // PWM para generar la frecuencia de muestreo
 PWM_Handler_t pwmHandler = {0};
 
+// Handler del SysTick
+Systick_Handler_t systick = {0};
+
 /* Elementos para la comunicacion serial */
 USART_Handler_t commSerial = {0};
 GPIO_Handler_t pinTx = {0};
@@ -96,6 +99,8 @@ void configPeripherals(void);
 void procesamientoFFT(float32_t *array);
 void seleccionRango(float32_t frecuencia);
 void verificarFrecuencia(float32_t numero);
+void seleccionAutomatica(void);
+void seleccionManual(void);
 
 
 /*
@@ -178,55 +183,7 @@ int main(void){
 
 			frec_prom = frec_prom;
 
-			// Se verifica el rango y se asigna un valor a nota_cuerda según el caso
-			if(!nota_cuerda){
-				seleccionRango(frec_prom);
-				flagNotaCuerda = 1;
-			}
-
-			// Se calcula la diferencia de frecuencia según la cuerda que se está afinando
-			if(flagNotaCuerda){
-				switch(nota_cuerda){
-				case E2: {
-					dif_frecuencias = FREC_E2 - frec_prom; // Obtenemos la diferencia de frecuencias
-					break;
-				}
-				case A2: {
-					dif_frecuencias = FREC_A2 - frec_prom;
-					break;
-				}
-				case D3: {
-					dif_frecuencias = FREC_D3 - frec_prom;
-					break;
-				}
-				case G3: {
-					dif_frecuencias = FREC_G3 - frec_prom;
-					break;
-				}
-				case B3: {
-					dif_frecuencias = FREC_B3 - frec_prom;
-					break;
-				}
-				case E4: {
-					dif_frecuencias = FREC_E4 - frec_prom;
-					break;
-				}
-				default:{
-					__NOP();
-					break;
-				}
-				}
-			}
-
-			verificarFrecuencia(dif_frecuencias);
-
-			usart2DataReceived = '\0';
-
-			systick_Delay_ms(1000);
-
-			if(!flagAfinado){
-				startPwmSignal(&pwmHandler);
-			}
+			seleccionAutomatica();
 		}
 
 
@@ -373,6 +330,18 @@ void configPeripherals(void){
 	sensor1.samplingPeriod		= SAMPLING_PERIOD_84_CYCLES;
 	sensor1.interrupState		= ADC_INT_ENABLE;
 
+	// 7. ===== SYSTICK =====
+	/* Configuramos el Systick */
+	systick.pSystick						= SYSTICK;
+	systick.Systick_Config.Systick_Reload	= SYSTICK_PSC_1ms;
+	systick.Systick_Config.Systick_IntState = SYSTICK_INT_ENABLE;
+
+	/* Cargamos la configuración del systick */
+	systick_Config(&systick);
+
+	/* Encendemos el Systick */
+	systick_SetState(&systick, SYSTICK_ON);
+
 
 }	// Fin de la configuración de los periféricos
 
@@ -459,27 +428,27 @@ void procesamientoFFT(float32_t *array){
  */
 void seleccionRango(float32_t frecuencia){
 
-	if(LIM_INFERIOR_E2 < frecuencia || frecuencia <= LIM_SUPERIOR_E2){
+	if(LIM_INFERIOR_E2 < frecuencia && frecuencia <= LIM_SUPERIOR_E2){
 		nota_cuerda = E2;	// Levantamos una bandera que permite determinar la cuerda específica
 		usart_WriteMsg(&commSerial, "Afinando la cuerda N°6 (E2) \r\n");
 	}
-	else if(LIM_INFERIOR_A2 < frecuencia || frecuencia <= LIM_SUPERIOR_A2){
+	else if(LIM_INFERIOR_A2 < frecuencia && frecuencia <= LIM_SUPERIOR_A2){
 		nota_cuerda = A2;
 		usart_WriteMsg(&commSerial, "Afinando la cuerda N°5 (A2) \r\n");
 	}
-	else if(LIM_INFERIOR_D3 < frecuencia || frecuencia <= LIM_SUPERIOR_D3){
+	else if(LIM_INFERIOR_D3 < frecuencia && frecuencia <= LIM_SUPERIOR_D3){
 		nota_cuerda = D3;
 		usart_WriteMsg(&commSerial, "Afinando la cuerda N°4 (D3) \r\n");
 	}
-	else if(LIM_INFERIOR_G3 < frecuencia || frecuencia <= LIM_SUPERIOR_G3){
+	else if(LIM_INFERIOR_G3 < frecuencia && frecuencia <= LIM_SUPERIOR_G3){
 		nota_cuerda = G3;
 		usart_WriteMsg(&commSerial, "Afinando la cuerda N°3 (G3) \r\n");
 	}
-	else if(LIM_INFERIOR_D3 < frecuencia || frecuencia <= LIM_SUPERIOR_D3){
-		nota_cuerda = D3;
+	else if(LIM_INFERIOR_B3 < frecuencia && frecuencia <= LIM_SUPERIOR_B3){
+		nota_cuerda = B3;
 		usart_WriteMsg(&commSerial, "Afinando la cuerda N°2 (D3) \r\n");
 	}
-	else if(LIM_INFERIOR_E4 < frecuencia || frecuencia < LIM_SUPERIOR_E4){
+	else if(LIM_INFERIOR_E4 < frecuencia && frecuencia < LIM_SUPERIOR_E4){
 		nota_cuerda = E4;
 		usart_WriteMsg(&commSerial, "Afinando la cuerda N°1 (E4) \r\n");
 	}
@@ -509,6 +478,64 @@ void verificarFrecuencia(float32_t numero){
 	}
 } // Fin función verificarNegativo()
 
+
+/*
+ * Función para que el afinador detecta la cuerda que se desea afinar de forma automática
+ */
+void seleccionAutomatica(void){
+
+	// Se verifica el rango y se asigna un valor a nota_cuerda según el caso
+	if(!nota_cuerda){
+		seleccionRango(frec_prom);
+		flagNotaCuerda = 1;
+	}
+
+	// Se calcula la diferencia de frecuencia según la cuerda que se está afinando
+	if(flagNotaCuerda){
+		switch(nota_cuerda){
+		case E2: {
+			dif_frecuencias = FREC_E2 - frec_prom; // Obtenemos la diferencia de frecuencias
+			break;
+		}
+		case A2: {
+			dif_frecuencias = FREC_A2 - frec_prom;
+			break;
+		}
+		case D3: {
+			dif_frecuencias = FREC_D3 - frec_prom;
+			break;
+		}
+		case G3: {
+			dif_frecuencias = FREC_G3 - frec_prom;
+			break;
+		}
+		case B3: {
+			dif_frecuencias = FREC_B3 - frec_prom;
+			break;
+		}
+		case E4: {
+			dif_frecuencias = FREC_E4 - frec_prom;
+			break;
+		}
+		default:{
+			__NOP();
+			break;
+		}
+		}
+	}
+
+	// Verifica si la frecuencia actual está por encima o por debajo de la frecuencia a afinar
+	verificarFrecuencia(dif_frecuencias);
+
+	usart2DataReceived = '\0';
+
+//	systick_Delay_ms(1000);
+
+	if(!flagAfinado){
+		startPwmSignal(&pwmHandler);
+	}
+
+} // Fin seleccionAutomatica()
 
 
 /* Callback de Timer 2 (Controla el userLed) */
