@@ -91,6 +91,9 @@ void i2c_Config(I2C_Handler_t *ptrHandlerI2C){
  */
 void i2c_StartTransaction(I2C_Handler_t *ptrHandlerI2C){
 
+	/* Solución a aparente problema al enciar al dirección del esclavo */
+	ptrHandlerI2C->ptrI2Cx->CR1 &= ~I2C_CR1_STOP;
+
 	/* 1. Verificamos que la línea no está ocupada - bit "Busy" del reg CR2 */
 	while(ptrHandlerI2C->ptrI2Cx->SR2 & I2C_SR2_BUSY){	// El ciclo se mantiene hasta que esté desocupada
 		__NOP();
