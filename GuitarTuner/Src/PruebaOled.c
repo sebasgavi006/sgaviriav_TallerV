@@ -51,7 +51,6 @@ int main(void){
 	configPeripherals();
 
 
-
 	/* Loop forever*/
 	while (1){
 
@@ -81,7 +80,7 @@ int main(void){
 			i2c_StopTransaction(&i2c_handler);
 
 			usart_WriteMsg(&commSerial, "\r\n");
-			sprintf(bufferMsg, "Respuesta Slave: %u\r\n", (auxRead));
+			sprintf(bufferMsg, "Respuesta Slave: %u\r\n", (auxRead >> 6 & 1));
 			usart_WriteMsg(&commSerial, bufferMsg);
 
 		}
@@ -131,11 +130,13 @@ int main(void){
 		/* Configura la OLED */
 		if (usart2DataReceived == 'C'){
 
-			uint8_t array[25] = 	{0xAE, 0x00, 0x10, 0x40, 0xB0, 0x81, 0xCF, 0xA1,
+			uint8_t array[30] = 	{0xAE, 0x20, 0x00, 0x21, 0, 127, 0x22, 0, 7, 0x40, 0x81, 0xCF, 0xA1,
 									 0xA6, 0xA8, 0x3F, 0xC8, 0xD3, 0x00, 0xD5, 0x80,
 									 0xD9, 0xF1, 0xDA, 0x12, 0xDB, 0x20, 0x8D, 0x14,
 									 0xAF};
-			oled_sendCommand(&i2c_handler, array, 25);
+
+//			uint8_t array[6] = 	{0x21, 15, 24, 0x22, 2, 4};
+			oled_sendCommand(&i2c_handler, array, 30);
 			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "Comando finalizado -> Debe leer 0\r\n");
 
@@ -145,52 +146,8 @@ int main(void){
 		/* Configura la OLED */
 		if (usart2DataReceived == 'c'){
 
-			i2c_handler.slaveAddress = OLED_ADDRESS;
-			i2c_Config(&i2c_handler);
+			oled_Config(&i2c_handler);
 
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xAE);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x00);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x10);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x40);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xB0);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x81);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xCF);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xA1);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xA6);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xA8);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x3F);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xC8);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xD3);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x00);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xD5);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x80);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xD9);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xF1);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xDA);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x12);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xDB);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x20);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x8D);
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0x14);
-
-			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_COMMAND, 0xAF);
-
-			i2c_StopTransaction(&i2c_handler);
 			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "Comando finalizado -> Debe leer 0\r\n");
 
@@ -236,15 +193,97 @@ int main(void){
 
 			usart2DataReceived = '\0';
 
-			uint8_t array[86] = {0};
+			uint8_t array[128] = {0};
 			array[0] = 0b11111111;
-			array[85] = 0b11111111;
+			array[127] = 0b11111111;
+
+			oled_sendData(&i2c_handler, array, 128);
+			usart_WriteMsg(&commSerial, "Finalizado\r\n");
+		}
 
 
-			oled_sendData(&i2c_handler, array, 86);
+		/* Fondo negro */
+		if (usart2DataReceived == 'n'){
+
+			usart_WriteMsg(&commSerial, "\r\n");
+			usart_WriteMsg(&commSerial, "Pintando negro\r\n");
+
+			usart2DataReceived = '\0';
+
+			uint8_t array[1024] = {0};
+			oled_sendData(&i2c_handler, array, 1024);
+			array[0] = 0x40;
+			oled_sendCommand(&i2c_handler, array, 1);
+			usart_WriteMsg(&commSerial, "Finalizado\r\n");
 
 		}
 
+		/* Prueba de función para escribir en la OLED */
+		if (usart2DataReceived == 'm'){
+
+			usart_WriteMsg(&commSerial, "\r\n");
+			usart_WriteMsg(&commSerial, "Probando String\r\n");
+
+			usart2DataReceived = '\0';
+
+//			uint8_t array[6] = 	{0x21,start_column, (start_column+(6*length)-1),
+//					0x22, start_page, start_page};
+//			oled_sendCommand(&i2c_handler, array, 6);
+
+			uint8_t bufferString[64] = {0};
+			sprintf((char *)bufferString, "CUERDA 1");
+
+			oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 8, 10, 1);
+
+//			uint8_t array[10] = {0x38, 0x44, 0x44, 0x38, 0x44, 0x44, 0x44, 0x38, 0x00, 0x00};
+//			oled_sendData(&i2c_handler, array, 10);
+
+			usart_WriteMsg(&commSerial, "Finalizado\r\n");
+
+		}
+
+
+		if (usart2DataReceived == 'M'){
+
+			usart_WriteMsg(&commSerial, "\r\n");
+			usart_WriteMsg(&commSerial, "Probando letras\r\n");
+
+			usart2DataReceived = '\0';
+
+			uint8_t array[6] = 	{0x21, 8, 16,
+					0x22, 3, 3};
+			oled_sendCommand(&i2c_handler, array, 6);
+
+			uint8_t array_data[8];
+			array_data[0] = 0b00001000;
+			array_data[1] = 0b00001000;
+			array_data[2] = 0b00001000;
+			array_data[3] = 0b01001001;
+			array_data[4] = 0b00101010;
+			array_data[5] = 0b00011100;
+			array_data[6] = 0b00001000;
+			array_data[7] = 0b00000000;
+
+			oled_sendData(&i2c_handler, array_data, 8);
+
+//			char bufferString[64] = {0};
+//			sprintf(bufferString, "11111");
+//			bufferString[0] = 'H';
+//			bufferString[1] = 'o';
+//			bufferString[2] = 'l';
+//			bufferString[3] = 'a';
+//
+//			uint8_t arrayAux[5];
+//
+//			setLetter('A', arrayAux);
+
+			uint8_t bufferString[64] = {0};
+			sprintf((char *)bufferString, "CUERDA 1");
+
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 3);
+
+			usart_WriteMsg(&commSerial, "Finalizado\r\n");
+		}
 
 	} // Fin while()
 
@@ -254,7 +293,7 @@ int main(void){
 
 /* ===== IMPORTANTE ADC =====
  * A continuación se muestran los pines que corresponden a
- * los diferentes canales del módulo ADC (Consersión Análogo Digital)
+ * los diferentes canales del módulo ADC (Conversión Análogo Digital)
  *
  * 	CANAL ADC	PIN			USART		TX		RX
  *
