@@ -53,14 +53,22 @@ enum{
 	SEG0_IN_COLUMN_127
 };
 
+enum{
+	NORMAL_DISPLAY = 0xA6,
+	INVERSE_DISPLAY
+};
+
 
 /* Funciones públicas para el manejo de la comunicación I2C con la OLED */
 void oled_startComunication(I2C_Handler_t *ptrHandlerI2C);
 void oled_stopComunication(I2C_Handler_t *ptrHandlerI2C);
-void oled_sendCommand(I2C_Handler_t *ptrHandlerI2C, uint8_t *command, uint8_t length);
-void oled_sendData(I2C_Handler_t *ptrHandlerI2C, uint8_t *data, uint8_t length);
+void oled_sendCommand(I2C_Handler_t *ptrHandlerI2C, uint8_t *command, uint16_t length);
+void oled_sendData(I2C_Handler_t *ptrHandlerI2C, uint8_t *data, uint16_t length);
+void oled_setString(I2C_Handler_t *ptrHandlerI2C, uint8_t *string, uint8_t display_mode, uint8_t length, uint8_t start_column, uint8_t start_page);
+void setLetter(uint8_t letter, uint8_t *letterArray);
 void oled_onDisplay(I2C_Handler_t *ptrHandlerI2C);
 void oled_offDisplay(I2C_Handler_t *ptrHandlerI2C);
+void oled_Config(I2C_Handler_t *ptrHandlerI2C);
 void oled_setAddressingMode(I2C_Handler_t *ptrHandlerI2C, uint8_t mode);
 void oled_setDisplayStartLine(I2C_Handler_t *ptrHandlerI2C, uint8_t row);
 void oled_setColumn(I2C_Handler_t *ptrHandlerI2C, uint8_t start_column, uint8_t end_column);
@@ -68,5 +76,6 @@ void oled_setPage(I2C_Handler_t *ptrHandlerI2C, uint8_t start_page, uint8_t end_
 void oled_setContrastControl(I2C_Handler_t *ptrHandlerI2C, uint8_t contrast);
 void oled_setSegmentRemap(I2C_Handler_t *ptrHandlerI2C, uint8_t column_address);
 void oled_setNormalDisplay(I2C_Handler_t *ptrHandlerI2C);
+
 
 #endif /* OLED_DRIVER_H_ */
