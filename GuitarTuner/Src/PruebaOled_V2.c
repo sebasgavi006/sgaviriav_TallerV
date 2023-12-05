@@ -79,7 +79,7 @@ int main(void){
 			i2c_StopTransaction(&i2c_handler);
 
 			usart_WriteMsg(&commSerial, "\r\n");
-			sprintf(bufferMsg, "Respuesta Slave: %u\r\n", (auxRead >> 6));
+			sprintf(bufferMsg, "Respuesta Slave: %u\r\n", (auxRead >> 6 & 1));
 			usart_WriteMsg(&commSerial, bufferMsg);
 
 			usart2DataReceived = '\0';
@@ -110,11 +110,11 @@ int main(void){
 		/* Configura la OLED */
 		if (usart2DataReceived == 'c'){
 
-			uint8_t array[25] = 	{0xAE, 0x00, 0x10,0x40, 0xB0, 0x81, 0xCF, 0xA1,
+			uint8_t array[26] = 	{0xAE, 0x00, 0x10,0x40, 0xB0, 0x81, 0xCF, 0xA1,
 									 0xA6, 0xA8, 0x3F, 0xC8, 0xD3, 0x00, 0xD5, 0x80,
 									 0xD9, 0xF1, 0xDA, 0x12, 0xDB, 0x20, 0x8D, 0x14,
-									 0xAF};
-			oled_sendCommand(&i2c_handler, array, 25);
+									 0xAF, 0xAF};
+			oled_sendCommand(&i2c_handler, array, 26);
 			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "Comando finalizado -> Debe leer 0\r\n");
 
