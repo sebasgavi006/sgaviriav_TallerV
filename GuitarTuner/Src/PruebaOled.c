@@ -21,9 +21,11 @@
 
 #include "oled_driver.h"
 
+
 // Definicion de los Handlers necesario
 GPIO_Handler_t userLed = {0}; //Led de estado PinA5
 Timer_Handler_t blinkTimer = {0};
+Timer_Handler_t blinkString = {0};
 GPIO_Handler_t pinSCL_I2C = {0};
 GPIO_Handler_t pinSDA_I2C = {0};
 I2C_Handler_t i2c_handler = {0};
@@ -37,6 +39,23 @@ GPIO_Handler_t pinTx = {0};
 GPIO_Handler_t pinRx = {0};
 uint8_t usart2DataReceived = 0;
 char	bufferMsg[64] = {0};
+uint8_t flagBlinkString = 0;
+uint8_t flagMenu = 0;
+uint8_t flagLetterM = 0;
+
+/* Variables para definir el área de escritura de cada letra */
+uint8_t E4_Col = 0;
+uint8_t E4_Page = 0;
+uint8_t B3_Col = 0;
+uint8_t B3_Page = 0;
+uint8_t G3_Col = 0;
+uint8_t G3_Page = 0;
+uint8_t D3_Col = 0;
+uint8_t D3_Page = 0;
+uint8_t A2_Col = 0;
+uint8_t A2_Page = 0;
+uint8_t E2_Col = 0;
+uint8_t E2_Page = 0;
 
 
 //Definicion de las cabeceras de las funciones  del main
@@ -46,6 +65,23 @@ void configPeripherals(void);
  * Funcion principal del sistema
  */
 int main(void){
+
+	/* Limpiamos todas las banderas */
+
+
+	/* Definimos los valores iniciales para las variables */
+	E4_Col 	= 4;		// Cuerda 1
+	E4_Page = 2;
+	B3_Col 	= 58;		// Cuerda 2
+	B3_Page = 3;
+	G3_Col 	= 4;		// Cuerda 3
+	G3_Page = 4;
+	D3_Col 	= 58;		// Cuerda 4
+	D3_Page = 5;
+	A2_Col 	= 4;		// Cuerda 5
+	A2_Page = 6;
+	E2_Col 	= 58;		// Cuerda 6
+	E2_Page = 7;
 
 	/* Configuramos los periféricos */
 	configPeripherals();
@@ -86,7 +122,7 @@ int main(void){
 		}
 
 		/* Encender la OLED */
-		if (usart2DataReceived == '1'){
+		if (usart2DataReceived == '8'){
 
 			i2c_handler.slaveAddress = OLED_ADDRESS;
 			i2c_Config(&i2c_handler);
@@ -97,7 +133,7 @@ int main(void){
 		}
 
 		/* Apagar la OLED */
-		if (usart2DataReceived == '2'){
+		if (usart2DataReceived == '9'){
 
 			i2c_handler.slaveAddress = OLED_ADDRESS;
 			i2c_Config(&i2c_handler);
@@ -108,7 +144,7 @@ int main(void){
 		}
 
 		/* Encender la OLED */
-		if (usart2DataReceived == '3'){
+		if (usart2DataReceived == '1'){
 
 			oled_onDisplay(&i2c_handler);
 			usart_WriteMsg(&commSerial, "\r\n");
@@ -118,7 +154,7 @@ int main(void){
 		}
 
 		/* Apagar la OLED */
-		if (usart2DataReceived == '4'){
+		if (usart2DataReceived == '2'){
 
 			oled_offDisplay(&i2c_handler);
 			usart_WriteMsg(&commSerial, "\r\n");
@@ -135,7 +171,6 @@ int main(void){
 									 0xD9, 0xF1, 0xDA, 0x12, 0xDB, 0x20, 0x8D, 0x14,
 									 0xAF};
 
-//			uint8_t array[6] = 	{0x21, 15, 24, 0x22, 2, 4};
 			oled_sendCommand(&i2c_handler, array, 30);
 			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "Comando finalizado -> Debe leer 0\r\n");
@@ -171,7 +206,7 @@ int main(void){
 		}
 
 		/* Apagar la OLED */
-		if (usart2DataReceived == 'x'){
+		if (usart2DataReceived == 'u'){
 
 			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_DATA, 0b11111111);
 			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_DATA, 0b11111111);
@@ -185,24 +220,8 @@ int main(void){
 			usart2DataReceived = '\0';
 		}
 
-		/* Apagar la OLED */
-		if (usart2DataReceived == 'z'){
 
-			usart_WriteMsg(&commSerial, "\r\n");
-			usart_WriteMsg(&commSerial, "Pintando negro\r\n");
-
-			usart2DataReceived = '\0';
-
-			uint8_t array[128] = {0};
-			array[0] = 0b11111111;
-			array[127] = 0b11111111;
-
-			oled_sendData(&i2c_handler, array, 128);
-			usart_WriteMsg(&commSerial, "Finalizado\r\n");
-		}
-
-
-		/* Fondo negro */
+		/* Limpiar toda la pantalla */
 		if (usart2DataReceived == 'n'){
 
 			usart_WriteMsg(&commSerial, "\r\n");
@@ -210,10 +229,8 @@ int main(void){
 
 			usart2DataReceived = '\0';
 
-			uint8_t array[1024] = {0};
-			oled_sendData(&i2c_handler, array, 1024);
-			array[0] = 0x40;
-			oled_sendCommand(&i2c_handler, array, 1);
+			flagLetterM = 0;
+			oled_clearDisplay(&i2c_handler);
 			usart_WriteMsg(&commSerial, "Finalizado\r\n");
 
 		}
@@ -221,25 +238,51 @@ int main(void){
 		/* Prueba de función para escribir en la OLED */
 		if (usart2DataReceived == 'm'){
 
+			flagLetterM = 1;
 			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "Probando String\r\n");
-
 			usart2DataReceived = '\0';
 
-//			uint8_t array[6] = 	{0x21,start_column, (start_column+(6*length)-1),
-//					0x22, start_page, start_page};
-//			oled_sendCommand(&i2c_handler, array, 6);
-
 			uint8_t bufferString[64] = {0};
-			sprintf((char *)bufferString, "CUERDA 1");
 
-			oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 8, 10, 1);
+			sprintf((char *)bufferString, "SELECCIONE LA CUERDA");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 20, 4, 0);
 
-//			uint8_t array[10] = {0x38, 0x44, 0x44, 0x38, 0x44, 0x44, 0x44, 0x38, 0x00, 0x00};
-//			oled_sendData(&i2c_handler, array, 10);
+			sprintf((char *)bufferString, "CUERDA-1 E4");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E4_Col, E4_Page);
+
+			sprintf((char *)bufferString, "B3 CUERDA-2");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, B3_Col, B3_Page);
+
+			sprintf((char *)bufferString, "CUERDA-3 G3");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, G3_Col, G3_Page);
+
+			sprintf((char *)bufferString, "D3 CUERDA-4");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, D3_Col, D3_Page);
+
+			sprintf((char *)bufferString, "CUERDA-5 A2");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, A2_Col, A2_Page);
+
+			sprintf((char *)bufferString, "E2 CUERDA-6");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
 
 			usart_WriteMsg(&commSerial, "Finalizado\r\n");
 
+		}
+
+		if(flagMenu){
+
+			uint8_t bufferString[64] = {0};
+			if(flagBlinkString == 1){
+				sprintf((char *)bufferString, "CUERDA-1 E4");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E4_Col, E4_Page);
+			}
+			else if(flagBlinkString == 0){
+				sprintf((char *)bufferString, "CUERDA-1 E4");
+				oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, E4_Col, E4_Page);
+			}
+			flagBlinkString ^= 1;
+			flagMenu ^= 1;
 		}
 
 
@@ -250,6 +293,7 @@ int main(void){
 
 			usart2DataReceived = '\0';
 
+			flagLetterM = 0;
 			uint8_t array[6] = 	{0x21, 8, 16,
 					0x22, 3, 3};
 			oled_sendCommand(&i2c_handler, array, 6);
@@ -266,21 +310,10 @@ int main(void){
 
 			oled_sendData(&i2c_handler, array_data, 8);
 
-//			char bufferString[64] = {0};
-//			sprintf(bufferString, "11111");
-//			bufferString[0] = 'H';
-//			bufferString[1] = 'o';
-//			bufferString[2] = 'l';
-//			bufferString[3] = 'a';
-//
-//			uint8_t arrayAux[5];
-//
-//			setLetter('A', arrayAux);
-
 			uint8_t bufferString[64] = {0};
-			sprintf((char *)bufferString, "CUERDA 1");
+			sprintf((char *)bufferString, "CUERDA 1 (E4)");
 
-			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 3);
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 13, 16, 3);
 
 			usart_WriteMsg(&commSerial, "Finalizado\r\n");
 		}
@@ -400,6 +433,19 @@ void configPeripherals(void){
 	/* Encendemos el Timer */
 	timer_SetState(&blinkTimer, TIMER_ON);
 
+	/* Configurando el Timer para el parpadeo de la opción actual disponible para seleccionar en el menu*/
+	blinkString.pTIMx								= TIM5;
+	blinkString.TIMx_Config.TIMx_Prescaler			= 16000;	// Genera incrementos de 1 ms
+	blinkString.TIMx_Config.TIMx_Period				= 1000;		// De la mano con el pre-scaler, determina cuando se dispara una interrupción (500 ms)
+	blinkString.TIMx_Config.TIMx_mode				= TIMER_UP_COUNTER;	// El Timer cuante ascendente
+	blinkString.TIMx_Config.TIMx_InterruptEnable	= TIMER_INT_ENABLE;	// Se activa la interrupción
+
+	/* Cargamos la configuración del Timer */
+	timer_Config(&blinkString);
+
+	/* Encendemos el Timer */
+	timer_SetState(&blinkString, TIMER_ON);
+
 
 	// 4. ===== USARTS =====
 	/* Configurando el puerto serial USART2 */
@@ -452,6 +498,16 @@ void configPeripherals(void){
 /* Callback de Timer 2 (Controla el userLed) */
 void Timer2_Callback(void){
 	gpio_TooglePin(&userLed);
+}
+
+/*
+ * Callback de Timer 5 (Controla la visualización
+ * de la opción actual en la OLED)
+ */
+void Timer5_Callback(void){
+	if(flagLetterM){
+		flagMenu ^= 1;
+	}
 }
 
 
