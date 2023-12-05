@@ -11,46 +11,6 @@
 #include "i2c_driver_hal.h"
 
 
-///* Funciones públicas para el manejo de la comunicación I2C con la OLED */
-//
-///*
-// * Función para iniciar la comunicación con la OLED.
-// * Por defecto, siempre se envía el ADDRESS y el bit de WRITTE
-// */
-//void oled_startComunication(I2C_Handler_t *ptrHandlerI2C, uint8_t ){
-//
-//	/* 1. Generamos la condición de "Start" */
-//	i2c_StartTransaction(ptrHandlerI2C);
-//
-//	/* 2. Enviamos la dirección del esclavo y la indicación de ESCRIBIR */
-//	/* 2A. Definimos una variable auxiliar para leer los
-//	 * registros para la secuencia de la bandera del ADDR
-//	 */
-//	uint8_t auxByte = 0;
-//	(void) auxByte;
-//
-//	/* 2B. Enviamos la dirección del Slave. En el bit menos significativo ponemos
-//	 * el valor Escritura = LOW (0)
-//	 */
-//	ptrHandlerI2C->ptrI2Cx->DR = ptrHandlerI2C->slaveAddress;
-//
-//	/* Esperamos hasta que la bandera del evento ADDR se levante
-//	 * (esto nos indica que la dirección fue enviada satisfactoriamente,
-//	 * junto con el bit de Lectura o Escritura)
-//	 */
-//	while(!(ptrHandlerI2C->ptrI2Cx->SR1 & I2C_SR1_ADDR)){
-//		__NOP();
-//	}
-//
-//	/* 3B. Debemos limpiar la bandera de la recepción de ACK del ADDR, para
-//	 * lo cual debemos leer en secuencia el I2C_SR1 y luego el I2C_SR2
-//	 */
-//	auxByte = ptrHandlerI2C->ptrI2Cx->SR1;
-//	auxByte = ptrHandlerI2C->ptrI2Cx->SR2;
-//
-//}
-
-
 /*
  * Función para enviar un  comando (configuración) a la pantalla
  */
@@ -546,6 +506,14 @@ void setLetter(uint8_t letter, uint8_t *letterArray){
 	letterArray[4] = 0b00000000;
 	break;
 
+	case '-':
+	letterArray[0] = 0b00000000;
+	letterArray[1] = 0b00010000;
+	letterArray[2] = 0b00010000;
+	letterArray[3] = 0b00010000;
+	letterArray[4] = 0b00000000;
+	break;
+
 	case '_':
 	letterArray[0] = 0b01000000;
 	letterArray[1] = 0b01000000;
@@ -634,13 +602,28 @@ void oled_setString(I2C_Handler_t *ptrHandlerI2C, uint8_t *string, uint8_t displ
 		}
 	}
 
-
-
 }
 
+/*
+ * Función para limpiar toda la pantalla OLED
+ */
+void oled_clearDisplay(I2C_Handler_t *ptrHandlerI2C){
+
+	/* Establecemos los límites de las columnas y páginas de la pantalla */
+	oled_setColumn(ptrHandlerI2C, 0, 127);
+	oled_setPage(ptrHandlerI2C, 0, 7);
+
+	/* Pintamos todos los píxeles de negro (All -> 0x00) */
+	uint8_t array[1024] = {0};
+	oled_sendData(ptrHandlerI2C, array, 1024);
+
+	/* Ubicamos el puntero al inicio de la primera columna y la primera página */
+	array[0] = 0x40;
+	oled_sendCommand(ptrHandlerI2C, array, 1);
+}
 
 /*
- * Función para encender la OLED
+ * Función para encender la OLED (Carga lo que haya quedado almacenado en la GDDRAM
  */
 void oled_onDisplay(I2C_Handler_t *ptrHandlerI2C){
 	/* Comando para encender la pantalla OLED */
@@ -650,7 +633,7 @@ void oled_onDisplay(I2C_Handler_t *ptrHandlerI2C){
 
 
 /*
- * Función para apagar la OLED
+ * Función para apagar la OLED (Sleep mode)
  */
 void oled_offDisplay(I2C_Handler_t *ptrHandlerI2C){
 	/* Comando para apagar la pantalla OLED */
@@ -688,7 +671,6 @@ void oled_setAddressingMode(I2C_Handler_t *ptrHandlerI2C, uint8_t mode){
 }
 
 
-
 /*
  * Función para establecer el constraste de la pantalla
  */
@@ -709,10 +691,12 @@ void oled_setSegmentRemap(I2C_Handler_t *ptrHandlerI2C, uint8_t column_address){
 }
 
 
+/*
+ * Función que envía un comando para configurar la pantalla en modo Normal
+ */
 void oled_setNormalDisplay(I2C_Handler_t *ptrHandlerI2C){
 	oled_sendCommand(ptrHandlerI2C, (uint8_t *)0xA6, 1);
 }
-
 
 
 /* ===== Las siguientes funciones establecen la manera en cómo funcionará el =====
@@ -724,11 +708,8 @@ void oled_setNormalDisplay(I2C_Handler_t *ptrHandlerI2C){
  * Direccionamiento de memoria
  */
 void oled_setColumn(I2C_Handler_t *ptrHandlerI2C, uint8_t start_column, uint8_t end_column){
-	uint8_t array[3] = {0};
-	array[0] = 0x21;
-	array[1] = start_column;
-	array[2] = end_column;
-	oled_sendCommand(ptrHandlerI2C, array, 1);
+	uint8_t array[3] = {0x21, start_column, end_column};
+	oled_sendCommand(ptrHandlerI2C, array, 3);
 }
 
 
@@ -737,9 +718,6 @@ void oled_setColumn(I2C_Handler_t *ptrHandlerI2C, uint8_t start_column, uint8_t 
  * horizontal y vertical en el Direccionamiento de memoria
  */
 void oled_setPage(I2C_Handler_t *ptrHandlerI2C, uint8_t start_page, uint8_t end_page){
-	uint8_t array[3] = {0};
-	array[0] = 0x22;
-	array[1] = start_page;
-	array[2] = end_page;
-	oled_sendCommand(ptrHandlerI2C, array, 1);
+	uint8_t array[3] = {0x22, start_page, end_page};
+	oled_sendCommand(ptrHandlerI2C, array, 3);
 }
