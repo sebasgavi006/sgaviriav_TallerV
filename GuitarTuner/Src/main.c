@@ -153,6 +153,8 @@ uint8_t A2_Page = 0;
 uint8_t E2_Col = 0;
 uint8_t E2_Page = 0;
 
+/* Array para figura mostrada durante el proceso de afinación */
+uint8_t array_figura[104] = {0};
 
 /* ===== ENCODER ===== */
 // Handlers para los pines del encoder
@@ -170,10 +172,9 @@ uint8_t readData = 0;
 /* Definición de variables contadoras para el switch
  * y los desplazamientos del encoder
  */
-uint8_t contadorSwitch = 0;
-uint8_t contadorData = 1;
-uint8_t contadorMenu0 = 1;
-uint8_t contadorMenu1 = 1;
+uint8_t contadorSwitch = MODO_MENU_INICIAL;
+uint8_t contadorMenu0 = MODO_AUTOMATICO;
+uint8_t contadorMenu1 = E4;
 
 /* Definición de las banderas */
 uint8_t flagMode = 0;		// Bandera del EXTI del Switch. Se asigna 0 para indicar que se inicializa en Modo Resolución
@@ -193,6 +194,7 @@ void seleccionManual(void);
 void evaluate(void);
 void animacionApretar(void);
 void animacionAflojar(void);
+void mensajeAfinado(void);
 
 
 /*
@@ -227,17 +229,17 @@ int main(void){
 	/* Configuramos el PWM que será la fuente del Trigger para empezar la conversión multicanal */
 	adc_ExternalTrigger(&pwmHandler);
 
-	/* Delay para tener tiempo de ver por la terminal */
-	systick_Delay_ms(SYSTICK_5s);
-
-	usart_WriteMsg(&commSerial, "-> Presione 't' para probar USART \n\r");
-	usart_WriteMsg(&commSerial, "-> Presione '1' para iniciar el programa \n\r");
-
 	/* Configuramos la pantalla OLED */
 	oled_Config(&i2c_handler);
 
 	/* Limpiamos la pantalla primero */
 	oled_clearDisplay(&i2c_handler);
+
+	/* Delay para tener tiempo de ver por la terminal */
+	systick_Delay_ms(SYSTICK_3s);
+
+	usart_WriteMsg(&commSerial, "-> Presione 't' para probar USART \n\r");
+	usart_WriteMsg(&commSerial, "-> Presione '1' para iniciar el programa \n\r");
 
 	/* Pintamos la interfaz del menú inicial */
 	uint8_t bufferString[64] = {0};
@@ -274,59 +276,38 @@ int main(void){
 
 		/* Prueba del USART */
 		if (usart2DataReceived == 't'){
-			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "¿Probando? ¡Funciona! Ouh-Yeah! \n\r");
 			usart2DataReceived = '\0';
 		}
 
 		/* Iniciamos el programa */
 		if ((usart2DataReceived == '1') || (contadorSwitch == MODO_MENU_0)){
-			/* Seleccion de modo por USART */
-			seleccionModo();
+
+			timer_SetState(&blinkString, TIMER_OFF);
+
+			flagMenuInicial = 0;
+			flagBlinkString = 0;
 			opAnim = 0;
 			flagMenu0 = 1;
+			contadorMenu0 = 1;
 			usart2DataReceived = '\0';
-		}
 
-		/* Parpadeo de la opción seleccionada */
-		if(flagMenu0 && (contadorSwitch == MODO_MENU_0) && (contadorMenu0 == MODO_AUTOMATICO)){
-			timer_SetState(&blinkString, TIMER_ON);
-			uint8_t bufferString[64] = {0};
-			if(flagBlinkString == 0){
-				sprintf((char *)bufferString, "AUTOMATICO");
-				oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 10, 34, 4);
-			}
-			else if(flagBlinkString == 1){
-				sprintf((char *)bufferString, "AUTOMATICO");
-				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 34, 4);
-			}
-			flagMenu0 ^= 1;
-			flagBlinkString ^= 1;
-		}
-		else if(flagMenu0 && (contadorSwitch == MODO_MENU_0) && (contadorMenu0 == MODO_MANUAL)){
-			timer_SetState(&blinkString, TIMER_ON);
-			uint8_t bufferString[64] = {0};
-			if(flagBlinkString == 0){
-				sprintf((char *)bufferString, "MANUAL");
-				oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 6, 46, 6);
-			}
-			else if(flagBlinkString == 1){
-				sprintf((char *)bufferString, "MANUAL");
-				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 6, 46, 6);
-			}
-			flagMenu0 ^= 1;
-			flagBlinkString ^= 1;
-		}
+			/* Seleccion de modo por USART */
+			seleccionModo();
 
+		}
 
 		/* Reinicia el modo actual */
 		if(usart2DataReceived == '2'){
-			if(flagModoActual == 'A'){
+			if(flagModoActual == MODO_AUTOMATICO){
 				// Ejecuta el modo de seleccion automatica hasta que esté afinada la cuerda
+				contadorSwitch = MODO_MENU_AUTOMATICO;
 				seleccionAutomatica();
 				usart2DataReceived = '\0';
 			}
-			else if(flagModoActual == 'M'){
+			else if(flagModoActual == MODO_MANUAL){
+				// Ejecuta el modo de afinamiento manual
+				contadorSwitch = MODO_MENU_1;
 				seleccionManual();
 				usart2DataReceived = '\0';
 			}
@@ -341,8 +322,6 @@ int main(void){
 			usart_WriteMsg(&commSerial, "Presione '1' para reiniciar la ejecución \n\r");
 			usart2DataReceived = '\0';
 		}
-
-
 
 		/* Cuando esté afinada la cuerda, se detiene el programa hasta iniciar
 		 * una nueva afinación
@@ -395,8 +374,6 @@ void configParameters(void){
 	count_ADC_Data = 0;
 	nota_cuerda = 0;
 	flagStop = 0;
-	flagAfinado = 0;
-	flagNotaCuerda = 0;
 	selecManual = 0;
 
 	flagAfinado = 0;
@@ -405,13 +382,14 @@ void configParameters(void){
 	flagAflojarClav = 0;
 
 	/* Banderas para manejo de la OLED */
-	flagBlinkString = 0;
 	flagMenuInicial = 1;
 	flagMenu0 = 0;
 	flagMenu1 = 0;
 	flagMenu = 0;
 	flagLetterM = 0;
+
 	opAnim = 0;
+	flagBlinkString = 0;
 	flagAnim = 0;
 	countAnim = 0;
 
@@ -430,6 +408,41 @@ void configParameters(void){
 	E2_Col 	= 58;		// Cuerda 6
 	E2_Page = 7;
 
+	/* Figura para mostrar durante la afinación */
+	/**/array_figura[0]  = 0b00000000; /**/array_figura[51] = 0b00000000;  /**/array_figura[26] = 0b00000000;
+	array_figura[79]  = 0b11111110; /**/array_figura[52] = 0b00000000; array_figura[27] = 0b00000000; array_figura[1] = 0b00000000;
+	array_figura[80]  = 0b11111110; array_figura[53] = 0b00000000; array_figura[28] = 0b00000000; array_figura[2] = 0b00000000;
+	array_figura[81]  = 0b11111110; array_figura[54] = 0b00000000; array_figura[29] = 0b00000000; array_figura[3] = 0b00000000;
+	array_figura[82]  = 0b00000000; array_figura[55] = 0b00000000; array_figura[30] = 0b00000000; array_figura[4] = 0b00000000;
+	array_figura[83]  = 0b11111111; array_figura[56] = 0b00000000; array_figura[31] = 0b00000000; array_figura[5] = 0b00000000;
+	array_figura[84]  = 0b11111111; array_figura[57] = 0b11111110; array_figura[32] = 0b00000000; array_figura[6] = 0b00000000;
+	array_figura[85]  = 0b11111111; array_figura[58] = 0b11111110; array_figura[33] = 0b00000000; array_figura[7] = 0b00000000;
+	array_figura[86]  = 0b00000000; array_figura[59] = 0b11111110; array_figura[34] = 0b00000000; array_figura[8] = 0b00000000;
+	array_figura[87]  = 0b11111111; array_figura[60] = 0b00000000; array_figura[35] = 0b11111111; array_figura[9] = 0b11111111;
+	array_figura[88] = 0b11111111; array_figura[61] = 0b11111111; array_figura[36] = 0b11111111; array_figura[10] = 0b11111111;
+	array_figura[89] = 0b11111111; array_figura[62] = 0b11111111; array_figura[37] = 0b11111111; array_figura[11] = 0b11111111;
+	array_figura[90] = 0b00000000; array_figura[63] = 0b11111111; array_figura[38] = 0b00000000; array_figura[12] = 0b00000000;
+	array_figura[91] = 0b11111111; array_figura[64] = 0b00000000; array_figura[39] = 0b11111110; array_figura[13] = 0b00000000;
+	array_figura[92] = 0b11111111; array_figura[65] = 0b11111111; array_figura[40] = 0b11111110; array_figura[14] = 0b00000000;
+	array_figura[93] = 0b11111111; array_figura[66] = 0b11111111; array_figura[41] = 0b11111110; array_figura[15] = 0b00000000;
+	array_figura[94] = 0b00000000; array_figura[67] = 0b11111111; array_figura[42] = 0b00000000; array_figura[16] = 0b00000000;
+	array_figura[95] = 0b11111111; array_figura[68] = 0b00000000; array_figura[43] = 0b11000000; array_figura[17] = 0b00000000;
+	array_figura[96] = 0b11111111; array_figura[69] = 0b11111111; array_figura[44] = 0b11000000; array_figura[18] = 0b00000000;
+	array_figura[97] = 0b11111111; array_figura[70] = 0b11111111; array_figura[45] = 0b11000000; array_figura[19] = 0b00000000;
+	array_figura[98] = 0b00000000; array_figura[71] = 0b11111111; array_figura[46] = 0b00000000; array_figura[20] = 0b00000000;
+	array_figura[99] = 0b11111111; array_figura[72] = 0b00000000; array_figura[47] = 0b00000000; array_figura[21] = 0b00000000;
+	array_figura[100] = 0b11111111; array_figura[73] = 0b11100000; array_figura[48] = 0b00000000; array_figura[2] = 0b00000000;
+	array_figura[101] = 0b11111111; array_figura[74] = 0b11100000; array_figura[49] = 0b00000000; array_figura[23] = 0b00000000;
+	array_figura[102] = 0b00000000; array_figura[75] = 0b11100000; array_figura[50] = 0b00000000; array_figura[24] = 0b00000000;
+	/**/array_figura[103] = 0b00000000; array_figura[76] = 0b00000000;							   /**/array_figura[25] = 0b00000000;
+	/**/array_figura[78] = 0b00000000; /**/array_figura[77] = 0b00000000;
+
+
+	/* Banderas y contadores del EXTI */
+	flagData = 0;
+	contadorSwitch = MODO_MENU_INICIAL;
+	contadorMenu0 = MODO_AUTOMATICO;
+	contadorMenu1 = E4;
 
 }
 
@@ -479,9 +492,9 @@ void configPeripherals(void){
 	gpio_Config(&pinRx);
 
 
-	/* Usamos el PinB10 para SCL */
+	/* Usamos el PinB8 para SCL */
 	pinSCL_I2C.pGPIOx								= GPIOB;
-	pinSCL_I2C.pinConfig.GPIO_PinNumber				= PIN_10;
+	pinSCL_I2C.pinConfig.GPIO_PinNumber				= PIN_8;
 	pinSCL_I2C.pinConfig.GPIO_PinMode				= GPIO_MODE_ALTFN;
 	pinSCL_I2C.pinConfig.GPIO_PinAltFunMode			= AF4;
 	pinSCL_I2C.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
@@ -492,11 +505,11 @@ void configPeripherals(void){
 	gpio_Config(&pinSCL_I2C);
 
 
-	/* Usamos el PinB3 para SDA */
+	/* Usamos el PinB9 para SDA */
 	pinSDA_I2C.pGPIOx								= GPIOB;
-	pinSDA_I2C.pinConfig.GPIO_PinNumber				= PIN_3;
+	pinSDA_I2C.pinConfig.GPIO_PinNumber				= PIN_9;
 	pinSDA_I2C.pinConfig.GPIO_PinMode				= GPIO_MODE_ALTFN;
-	pinSDA_I2C.pinConfig.GPIO_PinAltFunMode			= AF9;
+	pinSDA_I2C.pinConfig.GPIO_PinAltFunMode			= AF4;
 	pinSDA_I2C.pinConfig.GPIO_PinPuPdControl		= GPIO_PUPDR_NOTHING;
 	pinSDA_I2C.pinConfig.GPIO_PinOutputSpeed		= GPIO_OSPEED_FAST;
 	pinSDA_I2C.pinConfig.GPIO_PinOutputType			= GPIO_OTYPE_OPENDRAIN;
@@ -528,6 +541,9 @@ void configPeripherals(void){
 
 	/* Cargamos la configuración del Timer */
 	timer_Config(&blinkString);
+
+	/* Apagamos el Timer del parpadeo de opción de OLED */
+	timer_SetState(&blinkString, TIMER_OFF);
 
 
 	// 4. ===== USARTS =====
@@ -595,7 +611,7 @@ void configPeripherals(void){
 
 	// 8. ===== I2C =====
 	/* Configuramos el I2C */
-	i2c_handler.ptrI2Cx				= I2C2;
+	i2c_handler.ptrI2Cx				= I2C1;
 	i2c_handler.slaveAddress		= OLED_ADDRESS;
 	i2c_handler.modeI2C				= I2C_MODE_FM;
 
@@ -758,8 +774,23 @@ void verificarFrecuencia(float32_t numero){
 	if(numero < -(resolucion_FFT)){
 		if(!flagApretarClav){
 			usart_WriteMsg(&commSerial, "Aprieta la clavija \r\n");
+
+			/* Limpiamos la pantalla */
+			oled_clearDisplay(&i2c_handler);
+
+			/* Mensaje inicial */
+			uint8_t bufferString[64] = {0};
+			sprintf((char *)bufferString, "APRIETE");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 7, 16, 5);
+			sprintf((char *)bufferString, "LA CLAVIJA");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 16, 6);
+			flagAnim = 1;
 			opAnim = 1;
-			animacionApretar();
+			countAnim = 0;
+
+			/* Encendemos el Timer */
+			timer_SetState(&blinkString, TIMER_ON);
+
 			flagApretarClav = 1;
 			flagAflojarClav = 0;
 		}
@@ -768,8 +799,23 @@ void verificarFrecuencia(float32_t numero){
 	else if(numero > (resolucion_FFT)){
 		if(!flagAflojarClav){
 			usart_WriteMsg(&commSerial, "Afloja la clavija \r\n");
+
+			/* Limpiamos la pantalla */
+			oled_clearDisplay(&i2c_handler);
+
+			/* Mensaje inicial */
+			uint8_t bufferString[64] = {0};
+			sprintf((char *)bufferString, "AFLOJE");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 6, 16, 5);
+			sprintf((char *)bufferString, "LA CLAVIJA");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 16, 6);
+			flagAnim = 1;
 			opAnim = 1;
-			animacionAflojar();
+			countAnim = 0;
+
+			/* Encendemos el Timer */
+			timer_SetState(&blinkString, TIMER_ON);
+
 			flagAflojarClav = 1;
 			flagApretarClav = 0;
 		}
@@ -779,10 +825,14 @@ void verificarFrecuencia(float32_t numero){
 		flagAfinado = 1;
 		flagAflojarClav = 0;
 		flagApretarClav = 0;
+
 		usart_WriteMsg(&commSerial, "¡La cuerda esta afinada! \r\n");
-		opAnim = 0;
-		countAnim = 3;
-		animacionApretar();
+
+		/* Detenemos las animaciones */
+		timer_SetState(&blinkString, TIMER_OFF);
+
+		/* Imprimimos en la OLED el mensaje de finalización */
+		mensajeAfinado();
 	}
 } // Fin función verificarNegativo()
 
@@ -904,6 +954,9 @@ void seleccionAutomatica(void){
 		}
 	}
 
+	/* Limpiamos las banderas */
+	flagAfinado = 0;
+
 	usart2DataReceived = '\0';
 
 	usart_WriteMsg(&commSerial, "\r\n");
@@ -920,6 +973,37 @@ void seleccionAutomatica(void){
  */
 void seleccionManual(void){
 
+	contadorSwitch = MODO_MENU_1;
+	contadorMenu1 = E4;
+
+	/* Limpiamos la pantalla primero */
+	oled_clearDisplay(&i2c_handler);
+
+	/* Pintamos la interfaz del menú principal 1 */
+	uint8_t bufferString[64] = {0};
+
+	sprintf((char *)bufferString, "SELECCIONE LA CUERDA");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 20, 4, 0);
+
+	sprintf((char *)bufferString, "CUERDA-1 E4");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E4_Col, E4_Page);
+
+	sprintf((char *)bufferString, "B3 CUERDA-2");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, B3_Col, B3_Page);
+
+	sprintf((char *)bufferString, "CUERDA-3 G3");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, G3_Col, G3_Page);
+
+	sprintf((char *)bufferString, "D3 CUERDA-4");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, D3_Col, D3_Page);
+
+	sprintf((char *)bufferString, "CUERDA-5 A2");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, A2_Col, A2_Page);
+
+	sprintf((char *)bufferString, "E2 CUERDA-6");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
+
+	/* Imprimimos las instrucciones por comunicación serial */
 	usart_WriteMsg(&commSerial, "Modo manual seleccionado \r\n");
 	usart_WriteMsg(&commSerial, "Seleccione la cuerda a afinar \r\n");
 	usart_WriteMsg(&commSerial, "'1' -> Cuerda 1 (E4) \r\n");
@@ -930,17 +1014,154 @@ void seleccionManual(void){
 	usart_WriteMsg(&commSerial, "'6' -> Cuerda 6 (E2) \r\n");
 
 	usart2DataReceived = '\0';
-
 	contadorSwitch = MODO_MENU_1;
+	contadorMenu1 = E4;
+	flagBlinkString = 0;
+	flagMenu1 = 0;
+
+	timer_SetState(&blinkString, TIMER_ON);
 
 	/* Esperamos que el usuario seleccione una opción */
-	while(!usart2DataReceived || (contadorSwitch != MODO_MENU_1)){
+	while(!usart2DataReceived && (contadorSwitch == MODO_MENU_1)){
+
+		/* Evalúa las interrupciones del ENCODER */
 		evaluate();
-		__NOP();
-	}
 
+		switch(contadorMenu1){
+		case E4:{
+			/* Parpadeo de la opción seleccionada */
+			if(flagMenu1){
+				sprintf((char *)bufferString, "B3 CUERDA-2");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, B3_Col, B3_Page);
 
-	if(!usart2DataReceived){
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "CUERDA-1 E4");
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, E4_Col, E4_Page);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "CUERDA-1 E4");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E4_Col, E4_Page);
+				}
+				flagMenu1 ^= 1;
+				flagBlinkString ^= 1;
+			}
+			break;
+		}
+
+		case B3:{
+			/* Parpadeo de la opción seleccionada */
+			if(flagMenu1){
+				sprintf((char *)bufferString, "CUERDA-1 E4");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E4_Col, E4_Page);
+				sprintf((char *)bufferString, "CUERDA-3 G3");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, G3_Col, G3_Page);
+
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "B3 CUERDA-2");
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, B3_Col, B3_Page);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "B3 CUERDA-2");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, B3_Col, B3_Page);
+				}
+				flagMenu1 ^= 1;
+				flagBlinkString ^= 1;
+			}
+			break;
+		}
+
+		case G3: {
+			/* Parpadeo de la opción seleccionada */
+			if(flagMenu1){
+				sprintf((char *)bufferString, "B3 CUERDA-2");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, B3_Col, B3_Page);
+				sprintf((char *)bufferString, "D3 CUERDA-4");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, D3_Col, D3_Page);
+
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "CUERDA-3 G3");
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, G3_Col, G3_Page);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "CUERDA-3 G3");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, G3_Col, G3_Page);
+				}
+				flagMenu1 ^= 1;
+				flagBlinkString ^= 1;
+			}
+			break;
+		}
+
+		case D3: {
+			/* Parpadeo de la opción seleccionada */
+			if(flagMenu1){
+				sprintf((char *)bufferString, "CUERDA-3 G3");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, G3_Col, G3_Page);
+				sprintf((char *)bufferString, "CUERDA-5 A2");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, A2_Col, A2_Page);
+
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "D3 CUERDA-4");
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, D3_Col, D3_Page);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "D3 CUERDA-4");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, D3_Col, D3_Page);
+				}
+				flagMenu1 ^= 1;
+				flagBlinkString ^= 1;
+			}
+			break;
+		}
+
+		case A2: {
+			/* Parpadeo de la opción seleccionada */
+			if(flagMenu1){
+				sprintf((char *)bufferString, "D3 CUERDA-4");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, D3_Col, D3_Page);
+				sprintf((char *)bufferString, "E2 CUERDA-6");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
+
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "CUERDA-5 A2");
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, A2_Col, A2_Page);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "CUERDA-5 A2");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, A2_Col, A2_Page);
+				}
+				flagMenu1 ^= 1;
+				flagBlinkString ^= 1;
+			}
+			break;
+		}
+
+		case E2: {
+			/* Parpadeo de la opción seleccionada */
+			if(flagMenu1){
+				sprintf((char *)bufferString, "CUERDA-5 A2");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, A2_Col, A2_Page);
+
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "E2 CUERDA-6");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "E2 CUERDA-6");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
+				}
+				flagMenu1 ^= 1;
+				flagBlinkString ^= 1;
+			}
+			break;
+		}
+
+		} // Switch-case
+	} // While
+
+	timer_SetState(&blinkString, TIMER_OFF);
+
+	if(usart2DataReceived){
 		selecManual = usart2DataReceived;
 		switch(selecManual){
 		case '1': {
@@ -968,8 +1189,6 @@ void seleccionManual(void){
 			break;
 		}
 		}
-		usart2DataReceived = '\0';
-
 	}
 	else if(contadorSwitch == MODO_MENU_AUTOMATICO){
 		contadorSwitch = MODO_MENU_AFINANDO;
@@ -1000,21 +1219,19 @@ void seleccionManual(void){
 			break;
 		}
 		}
-		usart2DataReceived = '\0';
 	}
 
-
-
-	usart_WriteMsg(&commSerial, "Por favor, toque la cuerda \r\n");
+	usart2DataReceived = '\0';
 
 	/* Limpiamos la pantalla primero */
 	oled_clearDisplay(&i2c_handler);
 
-	/* Pintamos la interfaz del menú inicial */
-	uint8_t bufferString[64] = {0};
-
+	/* Pintamos la interfaz de las instrucciones */
 	sprintf((char *)bufferString, "TOQUE LA CUERDA");
 	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 15, 19, 3);
+
+	/* Enviamos las instrucciones por USART */
+	usart_WriteMsg(&commSerial, "Por favor, toque la cuerda \r\n");
 
 	systick_Delay_ms(SYSTICK_2s);
 
@@ -1028,6 +1245,8 @@ void seleccionManual(void){
 	// Se procesan los datos obtenidos por el micrófono
 	procesamientoFFT(ADC_Data1);
 	frec_prom = frec_prom;
+
+	flagAfinado = 0;
 
 	// Pasamos a la afinación de la cuerda seleccionada
 	while(!flagAfinado){
@@ -1067,8 +1286,21 @@ void seleccionManual(void){
 		// Verifica si la frecuencia actual está por encima o por debajo de la frecuencia a afinar
 		verificarFrecuencia(dif_frecuencias);
 
-	//	systick_Delay_ms(1000);
+		/* Limpiamos la variable para evitar errores */
+		dif_frecuencias = 0;
+
 		if(!flagAfinado){
+
+			/* Corremos la animación correspondiente */
+			if(flagApretarClav && flagAnim){
+				/* Cargamos la animación para indicar al usuario que debe apretar la clavija */
+				animacionApretar();
+			}
+			else if(flagAflojarClav && flagAnim){
+				/* Cargamos la animación para indicar al usuario que debe aflojar la clavija */
+				animacionAflojar();
+			}
+
 			startPwmSignal(&pwmHandler);
 			// Detecta la finalización de una conversión ADC
 			while(!flagStop){
@@ -1092,6 +1324,13 @@ void seleccionManual(void){
 		}
 	}
 
+	/* Limpiamos las banderas implicadas en el proceso */
+	flagAfinado = 0;
+
+	flagAnim = 0;
+	opAnim = 0;
+	countAnim = 0;
+
 	usart2DataReceived = '\0';
 
 	usart_WriteMsg(&commSerial, "\r\n");
@@ -1106,6 +1345,9 @@ void seleccionManual(void){
  */
 void seleccionModo(void){
 
+	/* Limpiamos la pantalla */
+	oled_clearDisplay(&i2c_handler);
+
 	/* Pintamos la interfaz del menú principal 1 */
 	uint8_t bufferString[64] = {0};
 
@@ -1118,6 +1360,8 @@ void seleccionModo(void){
 	sprintf((char *)bufferString, "MANUAL");
 	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 6, 46, 6);
 
+	timer_SetState(&blinkString, TIMER_ON);
+
 	/* Escribimos en la terminal serial */
 	usart2DataReceived = '\0';
 
@@ -1126,20 +1370,60 @@ void seleccionModo(void){
 	usart_WriteMsg(&commSerial, "Presiona M -> Seleccion Manual \r\n");
 
 	contadorSwitch = MODO_MENU_0;
+	contadorMenu0 = MODO_AUTOMATICO;
 
-	while(!usart2DataReceived || (contadorSwitch != MODO_MENU_0)){
+	while(!usart2DataReceived && (contadorSwitch == MODO_MENU_0)){
+
+		/* Parpadeo de la opción seleccionada */
+		if(flagMenu0 && (contadorSwitch == MODO_MENU_0) && (contadorMenu0 == MODO_AUTOMATICO)){
+			uint8_t bufferString[64] = {0};
+
+			sprintf((char *)bufferString, "MANUAL");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 6, 46, 6);
+
+			if(flagBlinkString == 0){
+				sprintf((char *)bufferString, "AUTOMATICO");
+				oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 10, 34, 4);
+			}
+			else if(flagBlinkString == 1){
+				sprintf((char *)bufferString, "AUTOMATICO");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 34, 4);
+			}
+			flagMenu0 ^= 1;
+			flagBlinkString ^= 1;
+		}
+
+		if(flagMenu0 && (contadorSwitch == MODO_MENU_0) && (contadorMenu0 == MODO_MANUAL)){
+			uint8_t bufferString[64] = {0};
+
+			sprintf((char *)bufferString, "AUTOMATICO");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 34, 4);
+
+			if(flagBlinkString == 0){
+				sprintf((char *)bufferString, "MANUAL");
+				oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 6, 46, 6);
+			}
+			else if(flagBlinkString == 1){
+				sprintf((char *)bufferString, "MANUAL");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 6, 46, 6);
+			}
+			flagMenu0 ^= 1;
+			flagBlinkString ^= 1;
+		}
+
 		evaluate();
-		__NOP();
 	}
 
-	if(usart2DataReceived == 'A' || (contadorMenu0 == MODO_AUTOMATICO)){
-		flagModoActual = usart2DataReceived;
+	timer_SetState(&blinkString, TIMER_OFF);
+
+	if(usart2DataReceived == 'A' || ((contadorMenu0 == MODO_AUTOMATICO) && (contadorSwitch == MODO_MENU_1))){
+		flagModoActual = MODO_AUTOMATICO;
 		// Ejecuta el modo de seleccion automatica hasta que esté afinada la cuerda
 		seleccionAutomatica();
 		usart2DataReceived = '\0';
 	}
-	else if(usart2DataReceived == 'M' || (contadorMenu0 == MODO_MANUAL)){
-		flagModoActual = usart2DataReceived;
+	else if(usart2DataReceived == 'M' || ((contadorMenu0 == MODO_MANUAL) && (contadorSwitch == MODO_MENU_1))){
+		flagModoActual = MODO_MANUAL;
 		// Ejectua el modo de seleccion manual, donde elegimos cuál cuerda se desea afinar
 		seleccionManual();
 		usart2DataReceived = '\0';
@@ -1153,65 +1437,23 @@ void seleccionModo(void){
 // Animación para indicar que hay que apretar la clavija
 void animacionApretar(void){
 
-	/* Mensaje inicial */
-	uint8_t bufferString[64] = {0};
-	sprintf((char *)bufferString, "APRIETE");
-	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 7, 16, 5);
-	sprintf((char *)bufferString, "LA CLAVIJA");
-	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 16, 6);
-	flagAnim = 1;
-	opAnim = 1;
-	countAnim = 0;
-
-	/* Encendemos el Timer */
-	timer_SetState(&blinkString, TIMER_ON);
-
+	/* Configuramos la zona donde deseamos pintar la animación */
 	uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 6};
 	oled_sendCommand(&i2c_handler, array, 6);
 
 	/* Matriz de 0b00000000 */
 	uint8_t array_zeros[78] = {0};
 
-	/* Se guarda la figura a animar */
-	uint8_t array_data[104];
-	/**/array_data[0]  = 0b00000000; /**/array_data[51] = 0b00000000;  /**/array_data[26] = 0b00000000;
-	array_data[79]  = 0b11111110; /**/array_data[52] = 0b00000000; array_data[27] = 0b00000000; array_data[1] = 0b00000000;
-	array_data[80]  = 0b11111110; array_data[53] = 0b00000000; array_data[28] = 0b00000000; array_data[2] = 0b00000000;
-	array_data[81]  = 0b11111110; array_data[54] = 0b00000000; array_data[29] = 0b00000000; array_data[3] = 0b00000000;
-	array_data[82]  = 0b00000000; array_data[55] = 0b00000000; array_data[30] = 0b00000000; array_data[4] = 0b00000000;
-	array_data[83]  = 0b11111111; array_data[56] = 0b00000000; array_data[31] = 0b00000000; array_data[5] = 0b00000000;
-	array_data[84]  = 0b11111111; array_data[57] = 0b11111110; array_data[32] = 0b00000000; array_data[6] = 0b00000000;
-	array_data[85]  = 0b11111111; array_data[58] = 0b11111110; array_data[33] = 0b00000000; array_data[7] = 0b00000000;
-	array_data[86]  = 0b00000000; array_data[59] = 0b11111110; array_data[34] = 0b00000000; array_data[8] = 0b00000000;
-	array_data[87]  = 0b11111111; array_data[60] = 0b00000000; array_data[35] = 0b11111111; array_data[9] = 0b11111111;
-	array_data[88] = 0b11111111; array_data[61] = 0b11111111; array_data[36] = 0b11111111; array_data[10] = 0b11111111;
-	array_data[89] = 0b11111111; array_data[62] = 0b11111111; array_data[37] = 0b11111111; array_data[11] = 0b11111111;
-	array_data[90] = 0b00000000; array_data[63] = 0b11111111; array_data[38] = 0b00000000; array_data[12] = 0b00000000;
-	array_data[91] = 0b11111111; array_data[64] = 0b00000000; array_data[39] = 0b11111110; array_data[13] = 0b00000000;
-	array_data[92] = 0b11111111; array_data[65] = 0b11111111; array_data[40] = 0b11111110; array_data[14] = 0b00000000;
-	array_data[93] = 0b11111111; array_data[66] = 0b11111111; array_data[41] = 0b11111110; array_data[15] = 0b00000000;
-	array_data[94] = 0b00000000; array_data[67] = 0b11111111; array_data[42] = 0b00000000; array_data[16] = 0b00000000;
-	array_data[95] = 0b11111111; array_data[68] = 0b00000000; array_data[43] = 0b11000000; array_data[17] = 0b00000000;
-	array_data[96] = 0b11111111; array_data[69] = 0b11111111; array_data[44] = 0b11000000; array_data[18] = 0b00000000;
-	array_data[97] = 0b11111111; array_data[70] = 0b11111111; array_data[45] = 0b11000000; array_data[19] = 0b00000000;
-	array_data[98] = 0b00000000; array_data[71] = 0b11111111; array_data[46] = 0b00000000; array_data[20] = 0b00000000;
-	array_data[99] = 0b11111111; array_data[72] = 0b00000000; array_data[47] = 0b00000000; array_data[21] = 0b00000000;
-	array_data[100] = 0b11111111; array_data[73] = 0b11100000; array_data[48] = 0b00000000; array_data[2] = 0b00000000;
-	array_data[101] = 0b11111111; array_data[74] = 0b11100000; array_data[49] = 0b00000000; array_data[23] = 0b00000000;
-	array_data[102] = 0b00000000; array_data[75] = 0b11100000; array_data[50] = 0b00000000; array_data[24] = 0b00000000;
-	/**/array_data[103] = 0b00000000; array_data[76] = 0b00000000;							   /**/array_data[25] = 0b00000000;
-	/**/array_data[78] = 0b00000000; /**/array_data[77] = 0b00000000;
-
 	switch(countAnim){
 	case 0:{
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 		uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 5};
 		oled_sendCommand(&i2c_handler, array, 6);
 		oled_sendData(&i2c_handler, array_zeros, 78);
 		break;
 	}
 	case 1:{
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 
 		uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 4};
 		oled_sendCommand(&i2c_handler, array, 6);
@@ -1219,7 +1461,7 @@ void animacionApretar(void){
 		break;
 	}
 	case 2:{
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 
 		uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 3};
 		oled_sendCommand(&i2c_handler, array, 6);
@@ -1227,7 +1469,7 @@ void animacionApretar(void){
 		break;
 	}
 	case 3: {
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 		break;
 	}
 	}
@@ -1237,65 +1479,24 @@ void animacionApretar(void){
 
 // Animación para indicar que hay que aflojar la clavija
 void animacionAflojar(void){
-	/* Mensaje inicial */
-	uint8_t bufferString[64] = {0};
-	sprintf((char *)bufferString, "AFLOJE");
-	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 6, 16, 5);
-	sprintf((char *)bufferString, "LA CLAVIJA");
-	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 16, 6);
-	flagAnim = 1;
-	opAnim = 1;
-	countAnim = 0;
 
-	/* Encendemos el Timer */
-	timer_SetState(&blinkString, TIMER_ON);
-
+	/* Configuramos el área para la animación */
 	uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 6};
 	oled_sendCommand(&i2c_handler, array, 6);
 
 	/* Matriz de 0b00000000 */
 	uint8_t array_zeros[78] = {0};
 
-	/* Se guarda la figura a animar */
-	uint8_t array_data[104];
-	/**/array_data[0]  = 0b00000000; /**/array_data[51] = 0b00000000;  /**/array_data[26] = 0b00000000;
-	array_data[79]  = 0b11111110; /**/array_data[52] = 0b00000000; array_data[27] = 0b00000000; array_data[1] = 0b00000000;
-	array_data[80]  = 0b11111110; array_data[53] = 0b00000000; array_data[28] = 0b00000000; array_data[2] = 0b00000000;
-	array_data[81]  = 0b11111110; array_data[54] = 0b00000000; array_data[29] = 0b00000000; array_data[3] = 0b00000000;
-	array_data[82]  = 0b00000000; array_data[55] = 0b00000000; array_data[30] = 0b00000000; array_data[4] = 0b00000000;
-	array_data[83]  = 0b11111111; array_data[56] = 0b00000000; array_data[31] = 0b00000000; array_data[5] = 0b00000000;
-	array_data[84]  = 0b11111111; array_data[57] = 0b11111110; array_data[32] = 0b00000000; array_data[6] = 0b00000000;
-	array_data[85]  = 0b11111111; array_data[58] = 0b11111110; array_data[33] = 0b00000000; array_data[7] = 0b00000000;
-	array_data[86]  = 0b00000000; array_data[59] = 0b11111110; array_data[34] = 0b00000000; array_data[8] = 0b00000000;
-	array_data[87]  = 0b11111111; array_data[60] = 0b00000000; array_data[35] = 0b11111111; array_data[9] = 0b11111111;
-	array_data[88] = 0b11111111; array_data[61] = 0b11111111; array_data[36] = 0b11111111; array_data[10] = 0b11111111;
-	array_data[89] = 0b11111111; array_data[62] = 0b11111111; array_data[37] = 0b11111111; array_data[11] = 0b11111111;
-	array_data[90] = 0b00000000; array_data[63] = 0b11111111; array_data[38] = 0b00000000; array_data[12] = 0b00000000;
-	array_data[91] = 0b11111111; array_data[64] = 0b00000000; array_data[39] = 0b11111110; array_data[13] = 0b00000000;
-	array_data[92] = 0b11111111; array_data[65] = 0b11111111; array_data[40] = 0b11111110; array_data[14] = 0b00000000;
-	array_data[93] = 0b11111111; array_data[66] = 0b11111111; array_data[41] = 0b11111110; array_data[15] = 0b00000000;
-	array_data[94] = 0b00000000; array_data[67] = 0b11111111; array_data[42] = 0b00000000; array_data[16] = 0b00000000;
-	array_data[95] = 0b11111111; array_data[68] = 0b00000000; array_data[43] = 0b11000000; array_data[17] = 0b00000000;
-	array_data[96] = 0b11111111; array_data[69] = 0b11111111; array_data[44] = 0b11000000; array_data[18] = 0b00000000;
-	array_data[97] = 0b11111111; array_data[70] = 0b11111111; array_data[45] = 0b11000000; array_data[19] = 0b00000000;
-	array_data[98] = 0b00000000; array_data[71] = 0b11111111; array_data[46] = 0b00000000; array_data[20] = 0b00000000;
-	array_data[99] = 0b11111111; array_data[72] = 0b00000000; array_data[47] = 0b00000000; array_data[21] = 0b00000000;
-	array_data[100] = 0b11111111; array_data[73] = 0b11100000; array_data[48] = 0b00000000; array_data[2] = 0b00000000;
-	array_data[101] = 0b11111111; array_data[74] = 0b11100000; array_data[49] = 0b00000000; array_data[23] = 0b00000000;
-	array_data[102] = 0b00000000; array_data[75] = 0b11100000; array_data[50] = 0b00000000; array_data[24] = 0b00000000;
-	/**/array_data[103] = 0b00000000; array_data[76] = 0b00000000;							   /**/array_data[25] = 0b00000000;
-	/**/array_data[78] = 0b00000000; /**/array_data[77] = 0b00000000;
-
 	switch(countAnim){
 	case 3:{
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 		uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 5};
 		oled_sendCommand(&i2c_handler, array, 6);
 		oled_sendData(&i2c_handler, array_zeros, 78);
 		break;
 	}
 	case 2:{
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 
 		uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 4};
 		oled_sendCommand(&i2c_handler, array, 6);
@@ -1303,7 +1504,7 @@ void animacionAflojar(void){
 		break;
 	}
 	case 1:{
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 
 		uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 3};
 		oled_sendCommand(&i2c_handler, array, 6);
@@ -1311,7 +1512,7 @@ void animacionAflojar(void){
 		break;
 	}
 	case 0: {
-		oled_sendData(&i2c_handler, array_data, 104);
+		oled_sendData(&i2c_handler, array_figura, 104);
 		break;
 	}
 	}
@@ -1319,11 +1520,40 @@ void animacionAflojar(void){
 	flagAnim ^= 1;
 }
 
+
+// Mensaje de que terminó la afinación
+void mensajeAfinado(void){
+
+	/* Limpiamos la OLED */
+	oled_clearDisplay(&i2c_handler);
+
+	/* Mensaje inicial */
+	uint8_t bufferString[64] = {0};
+	sprintf((char *)bufferString, "CUERDA");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 6, 16, 5);
+	sprintf((char *)bufferString, "AFINADA");
+	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 7, 16, 6);
+	flagAnim = 0;
+	opAnim = 0;
+	countAnim = 0;
+
+	/* Cargamos la configuración de la zona donde queremos hacer la figura */
+	uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 6};
+	oled_sendCommand(&i2c_handler, array, 6);
+
+	/* Pintamos la figura */
+	oled_sendData(&i2c_handler, array_figura, 104);
+}
+
+
 // Función para evaluar si se aumenta o disminuye el contador
 void evaluate(void){
 
 	// Menu para seleccionar afinación manual o automática
-	if(contadorSwitch == MODO_MENU_0){
+	if((contadorSwitch == MODO_MENU_0) && flagData){
+
+		// Bajamos la bandera por interrupción del ENCODER
+		flagData = 0;
 		if(readData == 1){
 			// Giro en sentido horario -> contadorSensor AUMENTA
 			if(contadorMenu0 == MODO_MANUAL){
@@ -1341,7 +1571,10 @@ void evaluate(void){
 	}
 
 	// Menu para seleccionar la cuerda a afinar
-	else if(contadorSwitch == MODO_MENU_1){
+	else if((contadorSwitch == MODO_MENU_1) && flagData){
+
+		// Bajamos la bandera por interrupción del ENCODER
+		flagData = 0;
 		if(readData == 1){
 			// Giro en sentido horario -> contadorRes AUMENTA
 			if(contadorMenu1 == E2){
@@ -1375,6 +1608,7 @@ void Timer2_Callback(void){
  * Callback de Timer 5 (Controla la visualización de la opción actual en la OLED)
  */
 void Timer5_Callback(void){
+
 	if(contadorSwitch == MODO_MENU_INICIAL){
 		flagMenuInicial ^= 1;
 	}
@@ -1385,10 +1619,6 @@ void Timer5_Callback(void){
 
 	if(contadorSwitch == MODO_MENU_1){
 		flagMenu1 ^= 1;
-	}
-
-	if(flagLetterM){
-		flagMenu ^= 1;
 	}
 
 	/* Contador para la animación */
@@ -1429,8 +1659,8 @@ void callback_ExtInt0(void){
 	flagMode = 1;	// Aplicamos un XOR a la bandera para que cambie de valor binario
 	contadorSwitch++;
 
-	if(contadorSwitch >= MODO_MENU_AUTOMATICO){
-		contadorSwitch = 0;
+	if(contadorSwitch >= MODO_MENU_AFINANDO){
+		contadorSwitch = MODO_MENU_0;
 	}
 }
 

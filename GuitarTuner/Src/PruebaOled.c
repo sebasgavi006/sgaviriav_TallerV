@@ -537,7 +537,7 @@ void configPeripherals(void){
 	/* Cargamos la configuración */
 	gpio_Config(&pinSCL_I2C);
 
-	/* Usamos el PinB9 para SCL */
+	/* Usamos el PinB9 para SDA */
 	pinSDA_I2C.pGPIOx								= GPIOB;
 	pinSDA_I2C.pinConfig.GPIO_PinNumber				= PIN_9;
 	pinSDA_I2C.pinConfig.GPIO_PinMode				= GPIO_MODE_ALTFN;
