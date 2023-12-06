@@ -42,6 +42,9 @@ char	bufferMsg[64] = {0};
 uint8_t flagBlinkString = 0;
 uint8_t flagMenu = 0;
 uint8_t flagLetterM = 0;
+uint8_t opAnim = 0;
+uint8_t flagAnim = 0;
+uint8_t countAnim = 0;
 
 /* Variables para definir el área de escritura de cada letra */
 uint8_t E4_Col = 0;
@@ -206,7 +209,7 @@ int main(void){
 		}
 
 		/* Apagar la OLED */
-		if (usart2DataReceived == 'u'){
+		if (usart2DataReceived == 'x'){
 
 			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_DATA, 0b11111111);
 			i2c_WriteSingleRegister(&i2c_handler, CONTROL_BYTE_DATA, 0b11111111);
@@ -229,7 +232,11 @@ int main(void){
 
 			usart2DataReceived = '\0';
 
+			/* Apagamos el Timer */
+			timer_SetState(&blinkString, TIMER_OFF);
+
 			flagLetterM = 0;
+			flagAnim = 0;
 			oled_clearDisplay(&i2c_handler);
 			usart_WriteMsg(&commSerial, "Finalizado\r\n");
 
@@ -239,10 +246,18 @@ int main(void){
 		if (usart2DataReceived == 'm'){
 
 			flagLetterM = 1;
+			flagBlinkString = 1;
+			flagAnim = 0;
+			opAnim = 0;
+
 			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "Probando String\r\n");
 			usart2DataReceived = '\0';
 
+			/* Limpiamos la pantalla primero */
+			oled_clearDisplay(&i2c_handler);
+
+			/* Pintamos la interfaz del menú principal 1 */
 			uint8_t bufferString[64] = {0};
 
 			sprintf((char *)bufferString, "SELECCIONE LA CUERDA");
@@ -266,27 +281,33 @@ int main(void){
 			sprintf((char *)bufferString, "E2 CUERDA-6");
 			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
 
+			/* Encendemos el Timer */
+			timer_SetState(&blinkString, TIMER_ON);
+
 			usart_WriteMsg(&commSerial, "Finalizado\r\n");
 
 		}
 
+		/* Parpadeo de la opción seleccionada */
 		if(flagMenu){
 
 			uint8_t bufferString[64] = {0};
 			if(flagBlinkString == 1){
 				sprintf((char *)bufferString, "CUERDA-1 E4");
-				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E4_Col, E4_Page);
+				oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, E4_Col, E4_Page);
 			}
 			else if(flagBlinkString == 0){
 				sprintf((char *)bufferString, "CUERDA-1 E4");
-				oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, E4_Col, E4_Page);
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E4_Col, E4_Page);
 			}
 			flagBlinkString ^= 1;
 			flagMenu ^= 1;
+			flagAnim = 0;
+			opAnim = 0;
 		}
 
 
-		if (usart2DataReceived == 'M'){
+		if(usart2DataReceived == 'M'){
 
 			usart_WriteMsg(&commSerial, "\r\n");
 			usart_WriteMsg(&commSerial, "Probando letras\r\n");
@@ -316,6 +337,116 @@ int main(void){
 			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 13, 16, 3);
 
 			usart_WriteMsg(&commSerial, "Finalizado\r\n");
+		}
+
+		if(usart2DataReceived == 'k'){
+
+			flagLetterM = 0;
+			usart2DataReceived = '\0';
+			/* Limpiamos la pantalla de la configuración anterior */
+			oled_clearDisplay(&i2c_handler);
+
+			/* Pintando interfaz de afinamiento */
+			uint8_t bufferString[64] = {0};
+			sprintf((char *)bufferString, "AFINANDO CUERDA-1");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 17, 13, 0);
+
+			sprintf((char *)bufferString, "NOTA: E4");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 2);
+		}
+
+		/* Pintando el afinamiento */
+		if(usart2DataReceived == 'u'){
+
+			usart2DataReceived = '\0';
+
+			uint8_t bufferString[64] = {0};
+			sprintf((char *)bufferString, "APRIETE");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 7, 16, 5);
+			sprintf((char *)bufferString, "LA CLAVIJA");
+			oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 10, 16, 6);
+			flagAnim = 1;
+			opAnim = 1;
+			countAnim = 0;
+
+			/* Encendemos el Timer */
+			timer_SetState(&blinkString, TIMER_ON);
+
+		}
+
+		/* Pintando animación */
+		if(flagAnim){
+
+			uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 6};
+			oled_sendCommand(&i2c_handler, array, 6);
+
+			/* Matriz de 0b00000000 */
+			uint8_t array_zeros[78] = {0};
+
+			/* Se guarda la figura a animar */
+			uint8_t array_data[104];
+			/**/array_data[0]  = 0b00000000; /**/array_data[51] = 0b00000000;  /**/array_data[26] = 0b00000000;
+			array_data[79]  = 0b11111110; /**/array_data[52] = 0b00000000; array_data[27] = 0b00000000; array_data[1] = 0b00000000;
+			array_data[80]  = 0b11111110; array_data[53] = 0b00000000; array_data[28] = 0b00000000; array_data[2] = 0b00000000;
+			array_data[81]  = 0b11111110; array_data[54] = 0b00000000; array_data[29] = 0b00000000; array_data[3] = 0b00000000;
+			array_data[82]  = 0b00000000; array_data[55] = 0b00000000; array_data[30] = 0b00000000; array_data[4] = 0b00000000;
+			array_data[83]  = 0b11111111; array_data[56] = 0b00000000; array_data[31] = 0b00000000; array_data[5] = 0b00000000;
+			array_data[84]  = 0b11111111; array_data[57] = 0b11111110; array_data[32] = 0b00000000; array_data[6] = 0b00000000;
+			array_data[85]  = 0b11111111; array_data[58] = 0b11111110; array_data[33] = 0b00000000; array_data[7] = 0b00000000;
+			array_data[86]  = 0b00000000; array_data[59] = 0b11111110; array_data[34] = 0b00000000; array_data[8] = 0b00000000;
+			array_data[87]  = 0b11111111; array_data[60] = 0b00000000; array_data[35] = 0b11111111; array_data[9] = 0b11111111;
+			array_data[88] = 0b11111111; array_data[61] = 0b11111111; array_data[36] = 0b11111111; array_data[10] = 0b11111111;
+			array_data[89] = 0b11111111; array_data[62] = 0b11111111; array_data[37] = 0b11111111; array_data[11] = 0b11111111;
+			array_data[90] = 0b00000000; array_data[63] = 0b11111111; array_data[38] = 0b00000000; array_data[12] = 0b00000000;
+			array_data[91] = 0b11111111; array_data[64] = 0b00000000; array_data[39] = 0b11111110; array_data[13] = 0b00000000;
+			array_data[92] = 0b11111111; array_data[65] = 0b11111111; array_data[40] = 0b11111110; array_data[14] = 0b00000000;
+			array_data[93] = 0b11111111; array_data[66] = 0b11111111; array_data[41] = 0b11111110; array_data[15] = 0b00000000;
+			array_data[94] = 0b00000000; array_data[67] = 0b11111111; array_data[42] = 0b00000000; array_data[16] = 0b00000000;
+			array_data[95] = 0b11111111; array_data[68] = 0b00000000; array_data[43] = 0b11000000; array_data[17] = 0b00000000;
+			array_data[96] = 0b11111111; array_data[69] = 0b11111111; array_data[44] = 0b11000000; array_data[18] = 0b00000000;
+			array_data[97] = 0b11111111; array_data[70] = 0b11111111; array_data[45] = 0b11000000; array_data[19] = 0b00000000;
+			array_data[98] = 0b00000000; array_data[71] = 0b11111111; array_data[46] = 0b00000000; array_data[20] = 0b00000000;
+			array_data[99] = 0b11111111; array_data[72] = 0b00000000; array_data[47] = 0b00000000; array_data[21] = 0b00000000;
+			array_data[100] = 0b11111111; array_data[73] = 0b11100000; array_data[48] = 0b00000000; array_data[2] = 0b00000000;
+			array_data[101] = 0b11111111; array_data[74] = 0b11100000; array_data[49] = 0b00000000; array_data[23] = 0b00000000;
+			array_data[102] = 0b00000000; array_data[75] = 0b11100000; array_data[50] = 0b00000000; array_data[24] = 0b00000000;
+			/**/array_data[103] = 0b00000000; array_data[76] = 0b00000000;							   /**/array_data[25] = 0b00000000;
+			/**/array_data[78] = 0b00000000; /**/array_data[77] = 0b00000000;
+
+
+
+			switch(countAnim){
+			case 0:{
+				oled_sendData(&i2c_handler, array_data, 104);
+				uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 5};
+				oled_sendCommand(&i2c_handler, array, 6);
+				oled_sendData(&i2c_handler, array_zeros, 78);
+				break;
+			}
+			case 1:{
+				oled_sendData(&i2c_handler, array_data, 104);
+
+				uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 4};
+				oled_sendCommand(&i2c_handler, array, 6);
+				oled_sendData(&i2c_handler, array_zeros, 52);
+				break;
+			}
+			case 2:{
+				oled_sendData(&i2c_handler, array_data, 104);
+
+				uint8_t array[6] = 	{0x21, 84, 109, 0x22, 3, 3};
+				oled_sendCommand(&i2c_handler, array, 6);
+				oled_sendData(&i2c_handler, array_zeros, 26);
+				break;
+			}
+			case 3: {
+				oled_sendData(&i2c_handler, array_data, 104);
+				break;
+			}
+			}
+
+			flagAnim ^= 1;
+
 		}
 
 	} // Fin while()
@@ -508,6 +639,18 @@ void Timer5_Callback(void){
 	if(flagLetterM){
 		flagMenu ^= 1;
 	}
+
+	/* Contador para la animación */
+	if(opAnim){
+		flagAnim ^= 1;
+		if(flagAnim){
+			countAnim++;
+			if(countAnim >= 4){
+				countAnim = 0;
+			}
+		}
+	}
+
 }
 
 
