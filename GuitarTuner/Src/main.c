@@ -97,6 +97,11 @@ enum{
 	MODO_MANUAL
 };
 
+enum{
+	RESPUESTA_AUTO_SI = 1,
+	RESPUESTA_AUTO_NO
+};
+
 /* Constantes para el manejo del rango de frecuencias
  * y la selección de la frecuencia adecuada
  */
@@ -133,6 +138,7 @@ uint8_t flagBlinkString = 0;
 uint8_t flagMenuInicial = 1;
 uint8_t flagMenu0 = 0;
 uint8_t flagMenu1 = 0;
+uint8_t flagMenu2 = 0;
 uint8_t flagMenu = 0;
 uint8_t flagLetterM = 0;
 uint8_t opAnim = 0;
@@ -175,6 +181,7 @@ uint8_t readData = 0;
 uint8_t contadorSwitch = MODO_MENU_INICIAL;
 uint8_t contadorMenu0 = MODO_AUTOMATICO;
 uint8_t contadorMenu1 = E4;
+uint8_t contadorMenu2 = RESPUESTA_AUTO_SI;
 
 /* Definición de las banderas */
 uint8_t flagMode = 0;		// Bandera del EXTI del Switch. Se asigna 0 para indicar que se inicializa en Modo Resolución
@@ -195,6 +202,7 @@ void evaluate(void);
 void animacionApretar(void);
 void animacionAflojar(void);
 void mensajeAfinado(void);
+void muestraNota(uint8_t nota_cuerda);
 
 
 /*
@@ -238,7 +246,7 @@ int main(void){
 	/* Delay para tener tiempo de ver por la terminal */
 	systick_Delay_ms(SYSTICK_3s);
 
-	usart_WriteMsg(&commSerial, "-> Presione 't' para probar USART \n\r");
+	usart_WriteMsg(&commSerial, "-> Presione 't' para probar USART \r\n");
 	usart_WriteMsg(&commSerial, "-> Presione '1' para iniciar el programa \n\r");
 
 	/* Pintamos la interfaz del menú inicial */
@@ -318,7 +326,7 @@ int main(void){
 			stopPwmSignal(&pwmHandler);
 
 			usart_WriteMsg(&commSerial, "\r\n");
-			usart_WriteMsg(&commSerial, "Pausando conversiones. \n\r");
+			usart_WriteMsg(&commSerial, "Pausando conversiones. \r\n");
 			usart_WriteMsg(&commSerial, "Presione '1' para reiniciar la ejecución \n\r");
 			usart2DataReceived = '\0';
 		}
@@ -385,6 +393,7 @@ void configParameters(void){
 	flagMenuInicial = 1;
 	flagMenu0 = 0;
 	flagMenu1 = 0;
+	flagMenu2 = 0;
 	flagMenu = 0;
 	flagLetterM = 0;
 
@@ -443,6 +452,7 @@ void configParameters(void){
 	contadorSwitch = MODO_MENU_INICIAL;
 	contadorMenu0 = MODO_AUTOMATICO;
 	contadorMenu1 = E4;
+	contadorMenu2 = RESPUESTA_AUTO_SI;
 
 }
 
@@ -753,7 +763,7 @@ void seleccionRango(float32_t frecuencia){
 	}
 	else if(LIM_INFERIOR_B3 < frecuencia && frecuencia <= LIM_SUPERIOR_B3){
 		nota_cuerda = B3;
-		usart_WriteMsg(&commSerial, "Afinando la cuerda N°2 (D3) \r\n");
+		usart_WriteMsg(&commSerial, "Afinando la cuerda N°2 (B3) \r\n");
 	}
 	else if(LIM_INFERIOR_E4 < frecuencia && frecuencia < LIM_SUPERIOR_E4){
 		nota_cuerda = E4;
@@ -773,10 +783,7 @@ void seleccionRango(float32_t frecuencia){
 void verificarFrecuencia(float32_t numero){
 	if(numero < -(resolucion_FFT)){
 		if(!flagApretarClav){
-			usart_WriteMsg(&commSerial, "Aprieta la clavija \r\n");
-
-			/* Limpiamos la pantalla */
-			oled_clearDisplay(&i2c_handler);
+			usart_WriteMsg(&commSerial, "Aprieta la clavija \n\r");
 
 			/* Mensaje inicial */
 			uint8_t bufferString[64] = {0};
@@ -798,10 +805,7 @@ void verificarFrecuencia(float32_t numero){
 	}
 	else if(numero > (resolucion_FFT)){
 		if(!flagAflojarClav){
-			usart_WriteMsg(&commSerial, "Afloja la clavija \r\n");
-
-			/* Limpiamos la pantalla */
-			oled_clearDisplay(&i2c_handler);
+			usart_WriteMsg(&commSerial, "Afloja la clavija \n\r");
 
 			/* Mensaje inicial */
 			uint8_t bufferString[64] = {0};
@@ -826,7 +830,7 @@ void verificarFrecuencia(float32_t numero){
 		flagAflojarClav = 0;
 		flagApretarClav = 0;
 
-		usart_WriteMsg(&commSerial, "¡La cuerda esta afinada! \r\n");
+		usart_WriteMsg(&commSerial, "¡La cuerda esta afinada! \n\r");
 
 		/* Detenemos las animaciones */
 		timer_SetState(&blinkString, TIMER_OFF);
@@ -843,15 +847,27 @@ void verificarFrecuencia(float32_t numero){
  */
 void seleccionAutomatica(void){
 
-	usart_WriteMsg(&commSerial, "Modo automático seleccionado \r\n");
+	usart_WriteMsg(&commSerial, "Modo automático seleccionado \n\r");
+
+	oled_clearDisplay(&i2c_handler);
+	uint8_t bufferString[64] = {0};
+
+	timer_SetState(&blinkString, TIMER_ON);
+	contadorSwitch = MODO_MENU_AUTOMATICO;
 
 	// While de verificación hasta que el sistema detecta la cuerda adecuada
 	while(!flagNotaCuerda){
 
-		usart_WriteMsg(&commSerial, "Por favor, toque la cuerda \r\n");
+		/* Pintamos la interfaz de las instrucciones */
+		oled_clearDisplay(&i2c_handler);
+		sprintf((char *)bufferString, "TOQUE LA CUERDA");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 15, 19, 3);
+
+		/* Mandamos las instrucciones por USART */
+		usart_WriteMsg(&commSerial, "Por favor, toque la cuerda \n\r");
 
 		// Espera 1 segundo para que el usuario toque la cuerda
-		systick_Delay_ms(SYSTICK_1s);
+		systick_Delay_ms(SYSTICK_2s);
 
 		startPwmSignal(&pwmHandler);
 
@@ -870,26 +886,72 @@ void seleccionAutomatica(void){
 			seleccionRango(frec_prom);
 		}
 
+		/* Mostramos por pantalla OLED cuál nota fue detectada */
+		muestraNota(nota_cuerda);
+
 		usart2DataReceived = '\0';
+		contadorSwitch = MODO_MENU_AUTOMATICO;
 
 		usart_WriteMsg(&commSerial, "¿La cuerda seleccionada es correcta? \r\n");
-		usart_WriteMsg(&commSerial, "Oprima 'y' o 'n' \r\n");
+		usart_WriteMsg(&commSerial, "Oprima 'y' o 'n' \n\r");
 
 		// Esperamos a recibir una respuesta del usuario
-		while(!usart2DataReceived){
-			__NOP();
+		while(!usart2DataReceived && (contadorSwitch == MODO_MENU_AUTOMATICO)){
+
+			/* Evalúa las interrupciones del ENCODER */
+			evaluate();
+
+			/* Animación de parpadeo de las opciones */
+			if(flagMenu2 && (contadorMenu2 == RESPUESTA_AUTO_SI)){
+				sprintf((char *)bufferString, "NO");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 2, 76, 5);
+
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "SI");
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 2, 40, 5);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "SI");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 2, 40, 5);
+				}
+				flagMenu2 ^= 1;
+				flagBlinkString ^= 1;
+			}
+
+			if(flagMenu2 && (contadorMenu2 == RESPUESTA_AUTO_NO)){
+				sprintf((char *)bufferString, "SI");
+				oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 2, 40, 5);
+
+				if(flagBlinkString == 0){
+					sprintf((char *)bufferString, "NO");
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 2, 76, 5);
+				}
+				else if(flagBlinkString == 1){
+					sprintf((char *)bufferString, "NO");
+					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 2, 76, 5);;
+				}
+				flagMenu2 ^= 1;
+				flagBlinkString ^= 1;
+			}
 		}
 
-		if(usart2DataReceived == 'y'){
+		if(usart2DataReceived == 'y' || ((contadorSwitch == MODO_MENU_AFINANDO) && contadorMenu2 == RESPUESTA_AUTO_SI)){
 			flagNotaCuerda = 1;
 		}
-		else if(usart2DataReceived == 'n'){
+		else if(usart2DataReceived == 'n' || ((contadorSwitch == MODO_MENU_AFINANDO) && contadorMenu2 == RESPUESTA_AUTO_NO)){
 			flagNotaCuerda = 0;
 			nota_cuerda = 0;
 		}
 
 		usart2DataReceived = '\0';
-	}
+
+	} // Fin While
+
+	flagMenu2 = 0;
+	flagBlinkString = 0;
+
+	/* Limpiamos la OLED */
+	oled_clearDisplay(&i2c_handler);
 
 	// Pasamos a la afinación de la cuerda seleccionada
 	while(!flagAfinado){
@@ -929,6 +991,17 @@ void seleccionAutomatica(void){
 		// Verifica si la frecuencia actual está por encima o por debajo de la frecuencia a afinar
 		verificarFrecuencia(dif_frecuencias);
 
+		/* Corremos la animación correspondiente */
+		if(flagApretarClav && flagAnim){
+			/* Cargamos la animación para indicar al usuario que debe apretar la clavija */
+			animacionApretar();
+		}
+		else if(flagAflojarClav && flagAnim){
+			/* Cargamos la animación para indicar al usuario que debe aflojar la clavija */
+			animacionAflojar();
+		}
+
+
 	//	systick_Delay_ms(1000);
 		if(!flagAfinado){
 			startPwmSignal(&pwmHandler);
@@ -948,7 +1021,7 @@ void seleccionAutomatica(void){
 			stopPwmSignal(&pwmHandler);
 
 			usart_WriteMsg(&commSerial, "\r\n");
-			usart_WriteMsg(&commSerial, "Pausando conversiones. \n\r");
+			usart_WriteMsg(&commSerial, "Pausando conversiones. \r\n");
 			usart_WriteMsg(&commSerial, "Presione '1' para reiniciar la ejecución \n\r");
 			usart2DataReceived = '\0';
 		}
@@ -956,14 +1029,24 @@ void seleccionAutomatica(void){
 
 	/* Limpiamos las banderas */
 	flagAfinado = 0;
+	flagNotaCuerda = 0;
+	dif_frecuencias = 0;
+	nota_cuerda = 0;
+
+	flagAnim = 0;
+	opAnim = 0;
+	countAnim = 0;
+
+	flagModoActual = MODO_AUTOMATICO;
+
+	timer_SetState(&blinkString, TIMER_OFF);
 
 	usart2DataReceived = '\0';
 
-	usart_WriteMsg(&commSerial, "\r\n");
-	usart_WriteMsg(&commSerial, "-> Presione '1' para cambiar de modo \n\r");
+	usart_WriteMsg(&commSerial, "-> Presione '1' para cambiar de modo \r\n");
 	usart_WriteMsg(&commSerial, "-> Presione '2' para reiniciar la afinación en el modo actual \n\r");
 
-	systick_Delay_ms(SYSTICK_1s);
+	systick_Delay_ms(SYSTICK_2s);
 
 } // Fin seleccionAutomatica()
 
@@ -1004,7 +1087,7 @@ void seleccionManual(void){
 	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
 
 	/* Imprimimos las instrucciones por comunicación serial */
-	usart_WriteMsg(&commSerial, "Modo manual seleccionado \r\n");
+	usart_WriteMsg(&commSerial, "Modo manual seleccionado \n\r");
 	usart_WriteMsg(&commSerial, "Seleccione la cuerda a afinar \r\n");
 	usart_WriteMsg(&commSerial, "'1' -> Cuerda 1 (E4) \r\n");
 	usart_WriteMsg(&commSerial, "'2' -> Cuerda 2 (B3) \r\n");
@@ -1144,7 +1227,7 @@ void seleccionManual(void){
 
 				if(flagBlinkString == 0){
 					sprintf((char *)bufferString, "E2 CUERDA-6");
-					oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 11, E2_Col, E2_Page);
+					oled_setString(&i2c_handler, bufferString, INVERSE_DISPLAY, 11, E2_Col, E2_Page);
 				}
 				else if(flagBlinkString == 1){
 					sprintf((char *)bufferString, "E2 CUERDA-6");
@@ -1231,9 +1314,11 @@ void seleccionManual(void){
 	oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 15, 19, 3);
 
 	/* Enviamos las instrucciones por USART */
-	usart_WriteMsg(&commSerial, "Por favor, toque la cuerda \r\n");
+	usart_WriteMsg(&commSerial, "Por favor, toque la cuerda \n\r");
 
 	systick_Delay_ms(SYSTICK_2s);
+
+	muestraNota(nota_cuerda);
 
 	startPwmSignal(&pwmHandler);
 	// Detecta la finalización de una conversión ADC
@@ -1318,7 +1403,7 @@ void seleccionManual(void){
 			stopPwmSignal(&pwmHandler);
 
 			usart_WriteMsg(&commSerial, "\r\n");
-			usart_WriteMsg(&commSerial, "Pausando conversiones. \n\r");
+			usart_WriteMsg(&commSerial, "Pausando conversiones. \r\n");
 			usart_WriteMsg(&commSerial, "Presione '1' para reiniciar la ejecución \n\r");
 			usart2DataReceived = '\0';
 		}
@@ -1326,18 +1411,21 @@ void seleccionManual(void){
 
 	/* Limpiamos las banderas implicadas en el proceso */
 	flagAfinado = 0;
+	dif_frecuencias = 0;
+	nota_cuerda = 0;
 
 	flagAnim = 0;
 	opAnim = 0;
 	countAnim = 0;
 
+	flagModoActual = MODO_MANUAL;
+
 	usart2DataReceived = '\0';
 
-	usart_WriteMsg(&commSerial, "\r\n");
-	usart_WriteMsg(&commSerial, "-> Presione '1' para cambiar de modo \n\r");
+	usart_WriteMsg(&commSerial, "-> Presione '1' para cambiar de modo \r\n");
 	usart_WriteMsg(&commSerial, "-> Presione '2' para reiniciar la afinación en el modo actual \n\r");
 
-	systick_Delay_ms(SYSTICK_1s);
+	systick_Delay_ms(SYSTICK_2s);
 }
 
 /*
@@ -1365,9 +1453,9 @@ void seleccionModo(void){
 	/* Escribimos en la terminal serial */
 	usart2DataReceived = '\0';
 
-	usart_WriteMsg(&commSerial, "Bienvenido a su afinador de guitarra de confianza \r\n");
+	usart_WriteMsg(&commSerial, "Bienvenido a su afinador de guitarra de confianza \n\r");
 	usart_WriteMsg(&commSerial, "Presiona A -> Seleccion Automatico \r\n");
-	usart_WriteMsg(&commSerial, "Presiona M -> Seleccion Manual \r\n");
+	usart_WriteMsg(&commSerial, "Presiona M -> Seleccion Manual \n\r");
 
 	contadorSwitch = MODO_MENU_0;
 	contadorMenu0 = MODO_AUTOMATICO;
@@ -1429,7 +1517,7 @@ void seleccionModo(void){
 		usart2DataReceived = '\0';
 	}
 	else{
-		usart_WriteMsg(&commSerial, "Por favor, seleccione un modo de funcionamiento válido \r\n");
+		usart_WriteMsg(&commSerial, "Por favor, seleccione un modo de funcionamiento válido \n\r");
 	}
 
 }
@@ -1546,6 +1634,66 @@ void mensajeAfinado(void){
 }
 
 
+// Muestra cuál nota estamos afinando actualmente
+void muestraNota(uint8_t nota_cuerda){
+
+	/* Limpiamos la pantalla primero */
+	oled_clearDisplay(&i2c_handler);
+
+	/* Identificamos la cuerda que se está afinando, para mostrar el mensaje en la OLED */
+	uint8_t bufferString[64] = {0};
+	switch(nota_cuerda){
+	case E4: {
+		sprintf((char *)bufferString, "AFINANDO CUERDA-1");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 17, 13, 0);
+
+		sprintf((char *)bufferString, "NOTA: E4");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 2);
+		break;
+	}
+	case B3: {
+		sprintf((char *)bufferString, "AFINANDO CUERDA-2");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 17, 13, 0);
+
+		sprintf((char *)bufferString, "NOTA: B3");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 2);
+		break;
+	}
+	case G3: {
+		sprintf((char *)bufferString, "AFINANDO CUERDA-3");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 17, 13, 0);
+
+		sprintf((char *)bufferString, "NOTA: G3");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 2);
+		break;
+	}
+	case D3: {
+		sprintf((char *)bufferString, "AFINANDO CUERDA-4");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 17, 13, 0);
+
+		sprintf((char *)bufferString, "NOTA: D3");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 2);
+		break;
+	}
+	case A2: {
+		sprintf((char *)bufferString, "AFINANDO CUERDA-5");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 17, 13, 0);
+
+		sprintf((char *)bufferString, "NOTA: A2");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 2);
+		break;
+	}
+	case E2: {
+		sprintf((char *)bufferString, "AFINANDO CUERDA-6");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 17, 13, 0);
+
+		sprintf((char *)bufferString, "NOTA: E2");
+		oled_setString(&i2c_handler, bufferString, NORMAL_DISPLAY, 8, 16, 2);
+		break;
+	}
+	}
+}
+
 // Función para evaluar si se aumenta o disminuye el contador
 void evaluate(void){
 
@@ -1591,7 +1739,26 @@ void evaluate(void){
 		}
 	}
 
-	//
+	// Menu para interactuar con el afinador en modo automático
+	if((contadorSwitch == MODO_MENU_AUTOMATICO) && flagData){
+
+		// Bajamos la bandera por interrupción del ENCODER
+		flagData = 0;
+		if(readData == 1){
+			// Giro en sentido horario -> contadorSensor AUMENTA
+			if(contadorMenu2 == RESPUESTA_AUTO_NO){
+				contadorMenu2--;
+			}
+			contadorMenu2++;
+		}
+		else{
+			// Giro en sentido anti-horario -> contadorSensor DISMINUYE
+			if(contadorMenu2 == RESPUESTA_AUTO_SI){
+				contadorMenu2++;
+			}
+			contadorMenu2--;
+		}
+	}
 
 } // Fin Función evaluate()
 
@@ -1619,6 +1786,10 @@ void Timer5_Callback(void){
 
 	if(contadorSwitch == MODO_MENU_1){
 		flagMenu1 ^= 1;
+	}
+
+	if(contadorSwitch == MODO_MENU_AUTOMATICO){
+		flagMenu2 ^= 1;
 	}
 
 	/* Contador para la animación */
@@ -1659,7 +1830,7 @@ void callback_ExtInt0(void){
 	flagMode = 1;	// Aplicamos un XOR a la bandera para que cambie de valor binario
 	contadorSwitch++;
 
-	if(contadorSwitch >= MODO_MENU_AFINANDO){
+	if(contadorSwitch > MODO_MENU_AFINANDO){
 		contadorSwitch = MODO_MENU_0;
 	}
 }
@@ -1673,6 +1844,9 @@ void callback_ExtInt8(void){
 	readData = gpio_ReadPin(&data);
 }
 
+/*
+ * Callback del USART 2 debido a recepción
+ */
 void usart2_RxCallback(void){
 	usart2DataReceived = usart2_getRxData();
 }
